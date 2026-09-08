@@ -332,4 +332,18 @@ void loop() {
     notes:
       'Při práci s CO2 laserem vždy používej ventilaci a ochranné brýle – PVC plexi uvolňuje toxické plyny.',
   },
+  {
+    "slug": "oprva",
+    "title": "pokus",
+    "category": "Opravy",
+    "shortDescription": "",
+    "image": "https://images.pexels.com/photos/163100/circuit-circuit-board-resistor-computer-163100.jpeg",
+    "imageAlt": "pokus",
+    "date": "2026-09-08",
+    "purpose": "",
+    "description": "",
+    "components": [],
+    "steps": [],
+    "notes": ""
+  },
 ];
