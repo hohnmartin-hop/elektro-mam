@@ -1,6 +1,5 @@
 backend:
-  name: github
-  repo: hohnmartin-hop/elektro-mam
+  name: git-gateway
   branch: main
 
 media_folder: "public/images/uploads"
