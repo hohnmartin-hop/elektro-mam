@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, MapPin, Send, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, MapPin, Send, CheckCircle2, AlertCircle, Loader2, Copy, Check } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 
 interface FormState {
@@ -24,6 +24,20 @@ export function ContactPage() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const contactEmail = 'Elektro-MaM@email.cz';
+
+  const copyEmailToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(contactEmail);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Záložní řešení, pokud by prohlížeč blokoval clipboard API
+      console.warn('Nepodařilo se zkopírovat e-mail do schránky');
+    }
+  };
 
   const validate = (): boolean => {
     const e: Errors = {};
@@ -121,20 +135,47 @@ export function ContactPage() {
             <div className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
               <h2 className="mb-4 text-lg font-semibold text-white">Kontaktní údaje</h2>
               <ul className="space-y-4">
-                <li>
+                {/* Položka E-mail s tlačítkem na kopírování */}
+                <li className="relative flex items-center justify-between gap-3 text-sm text-ink-100">
                   <a
-                    href="mailto:Elektro-MaM@email.cz"
-                    className="flex items-center gap-3 text-sm text-ink-100 transition-colors hover:text-accent-400"
+                    href={`mailto:${contactEmail}`}
+                    className="flex items-center gap-3 transition-colors hover:text-accent-400"
+                    title="Otevřít v poštovním programu"
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-accent-500/40 bg-accent-500/10">
                       <Mail className="h-5 w-5 text-accent-400" aria-hidden />
                     </div>
                     <div>
                       <div className="text-xs text-ink-300">E-mail</div>
-                      <div>Elektro-MaM@email.cz</div>
+                      <div className="font-mono text-sm">{contactEmail}</div>
                     </div>
                   </a>
+
+                  {/* Tlačítko pro zkopírování do schránky s bublinou */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={copyEmailToClipboard}
+                      className="group flex h-9 w-9 items-center justify-center rounded-lg border border-ink-500/60 bg-ink-800/60 text-ink-300 transition-all hover:border-accent-500/60 hover:bg-ink-700 hover:text-accent-400"
+                      aria-label="Zkopírovat e-mail do schránky"
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-circuit-green" aria-hidden />
+                      ) : (
+                        <Copy className="h-4 w-4 transition-transform group-hover:scale-110" aria-hidden />
+                      )}
+                    </button>
+
+                    {/* Vyskakovací bublina */}
+                    {copied && (
+                      <div className="absolute -top-10 right-0 z-20 whitespace-nowrap rounded-md border border-circuit-green/40 bg-ink-900 px-2.5 py-1 text-xs font-medium text-circuit-green shadow-lg animate-fade-in-up">
+                        Zkopírováno do schránky!
+                      </div>
+                    )}
+                  </div>
                 </li>
+
+                {/* Položka Adresa */}
                 <li className="flex items-center gap-3 text-sm text-ink-100">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-accent-500/40 bg-accent-500/10">
                     <MapPin className="h-5 w-5 text-accent-400" aria-hidden />
