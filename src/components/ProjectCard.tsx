@@ -37,7 +37,9 @@ export function ProjectCard({ project }: { project: Project }) {
         <h3 className="text-lg font-semibold text-white transition-colors group-hover:text-accent-400">
           {project.title}
         </h3>
-        <p className="mt-2 flex-1 text-sm text-ink-200">{project.shortDescription}</p>
+        <p className="mt-2 line-clamp-3 text-sm text-ink-200">
+          {project.shortDescription}
+        </p>
         <div className="mt-4 flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs text-ink-300">
             <Calendar className="h-3.5 w-3.5" aria-hidden />
