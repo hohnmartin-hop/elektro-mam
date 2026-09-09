@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, MapPin, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, MapPin, Send, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 
 interface FormState {
@@ -22,6 +22,8 @@ export function ContactPage() {
   const [form, setForm] = useState<FormState>(empty);
   const [errors, setErrors] = useState<Errors>({});
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const validate = (): boolean => {
     const e: Errors = {};
@@ -53,12 +55,34 @@ export function ContactPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      // Placeholder for future backend integration
-      setSent(true);
-      setForm(empty);
+    setServerError(null);
+
+    if (!validate()) return;
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          'form-name': 'contact',
+          ...form,
+        }).toString(),
+      });
+
+      if (response.ok) {
+        setSent(true);
+        setForm(empty);
+      } else {
+        setServerError('Odeslání se nezdařilo. Zkus to prosím znovu nebo napiš přímo na e-mail.');
+      }
+    } catch {
+      setServerError('Došlo k chybě spojení. Zkontroluj připojení k internetu.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,12 +148,28 @@ export function ContactPage() {
                 <div className="mb-6 flex items-start gap-3 rounded-lg border border-circuit-green/40 bg-circuit-green/10 p-4">
                   <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-circuit-green" aria-hidden />
                   <p className="text-sm text-ink-100">
-                    Děkuji za zprávu! Ozvu se co nejdříve.
+                    Děkuji za zprávu! Byla úspěšně odeslána. Ozvu se co nejdříve.
                   </p>
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} noValidate className="space-y-5">
+              {serverError && (
+                <div className="mb-6 flex items-start gap-3 rounded-lg border border-circuit-red/40 bg-circuit-red/10 p-4">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-circuit-red" aria-hidden />
+                  <p className="text-sm text-circuit-red">{serverError}</p>
+                </div>
+              )}
+
+              <form
+                name="contact"
+                method="POST"
+                data-netlify="true"
+                onSubmit={handleSubmit}
+                noValidate
+                className="space-y-5"
+              >
+                <input type="hidden" name="form-name" value="contact" />
+
                 <div className="grid gap-5 sm:grid-cols-2">
                   {/* Name */}
                   <div>
@@ -222,9 +262,22 @@ export function ContactPage() {
                   )}
                 </div>
 
-                <button type="submit" className="btn-primary w-full sm:w-auto">
-                  <Send className="h-4 w-4" aria-hidden />
-                  Odeslat zprávu
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-primary w-full sm:w-auto disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Odesílám...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" aria-hidden />
+                      Odeslat zprávu
+                    </>
+                  )}
                 </button>
               </form>
             </div>
