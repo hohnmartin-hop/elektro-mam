@@ -64,20 +64,29 @@ export function ContactPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/', {
+      const response = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          'form-name': 'contact',
-          ...form,
-        }).toString(),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          access_key: 'b3b9b5b7-273c-495c-a912-b2beeb2808da',
+          name: form.name,
+          email: form.email,
+          subject: `[Elektro MaM] ${form.subject}`,
+          message: form.message,
+          from_name: 'Web Elektro MaM',
+        }),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (data.success) {
         setSent(true);
         setForm(empty);
       } else {
-        setServerError('Odeslání se nezdařilo. Zkus to prosím znovu nebo napiš přímo na e-mail.');
+        setServerError(data.message || 'Odeslání se nezdařilo. Zkus to prosím znovu.');
       }
     } catch {
       setServerError('Došlo k chybě spojení. Zkontroluj připojení k internetu.');
@@ -107,7 +116,7 @@ export function ContactPage() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Contact info */}
+          {/* Kontaktní údaje */}
           <div className="space-y-4">
             <div className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
               <h2 className="mb-4 text-lg font-semibold text-white">Kontaktní údaje</h2>
@@ -139,7 +148,7 @@ export function ContactPage() {
             </div>
           </div>
 
-          {/* Form */}
+          {/* Formulář */}
           <div className="lg:col-span-2">
             <div className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 sm:p-8">
               <h2 className="mb-6 text-lg font-semibold text-white">Napiš mi zprávu</h2>
@@ -160,18 +169,9 @@ export function ContactPage() {
                 </div>
               )}
 
-              <form
-                name="contact"
-                method="POST"
-                data-netlify="true"
-                onSubmit={handleSubmit}
-                noValidate
-                className="space-y-5"
-              >
-                <input type="hidden" name="form-name" value="contact" />
-
+              <form onSubmit={handleSubmit} noValidate className="space-y-5">
                 <div className="grid gap-5 sm:grid-cols-2">
-                  {/* Name */}
+                  {/* Jméno */}
                   <div>
                     <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-ink-100">
                       Jméno <span className="text-circuit-red">*</span>
@@ -194,7 +194,7 @@ export function ContactPage() {
                     )}
                   </div>
 
-                  {/* Email */}
+                  {/* E-mail */}
                   <div>
                     <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink-100">
                       E-mail <span className="text-circuit-red">*</span>
@@ -218,7 +218,7 @@ export function ContactPage() {
                   </div>
                 </div>
 
-                {/* Subject */}
+                {/* Předmět */}
                 <div>
                   <label htmlFor="subject" className="mb-1.5 block text-sm font-medium text-ink-100">
                     Předmět <span className="text-circuit-red">*</span>
@@ -240,7 +240,7 @@ export function ContactPage() {
                   )}
                 </div>
 
-                {/* Message */}
+                {/* Zpráva */}
                 <div>
                   <label htmlFor="message" className="mb-1.5 block text-sm font-medium text-ink-100">
                     Zpráva <span className="text-circuit-red">*</span>
