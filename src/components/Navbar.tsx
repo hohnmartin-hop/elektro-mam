@@ -9,6 +9,7 @@ const navItems = [
   { to: '/', label: 'Úvod' },
   { to: '/projekty', label: 'Projekty' },
   { to: '/recepty', label: 'Recepty' },
+  { to: '/kniha-prani', label: 'Kniha přání a ztížností' },
   { to: '/o-mne', label: 'O mně' },
   { to: '/kontakt', label: 'Kontakt' },
 ];

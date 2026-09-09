@@ -7,6 +7,7 @@ import { RecipesPage } from '@/pages/RecipesPage';
 import { RecipeDetailPage } from '@/pages/RecipeDetailPage';
 import { AboutPage } from '@/pages/AboutPage';
 import { ContactPage } from '@/pages/ContactPage';
+import { Guestbook } from '@/pages/Guestbook';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 const router = createBrowserRouter([
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
       { path: '/recepty/:slug', element: <RecipeDetailPage /> },
       { path: '/o-mne', element: <AboutPage /> },
       { path: '/kontakt', element: <ContactPage /> },
+      { path: '/kniha-prani', element: <Guestbook /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
