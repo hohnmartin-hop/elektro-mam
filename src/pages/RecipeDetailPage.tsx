@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 import { recipes } from '@/data/recipes';
+import { RecipeComments } from '@/components/RecipeComments';
 
 export function RecipeDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -152,6 +153,11 @@ export function RecipeDetailPage() {
               <p className="text-ink-100 leading-relaxed">{recipe.notes}</p>
             </section>
           )}
+        </div>
+
+        {/* Komentáře k receptu — při tisku skryté */}
+        <div className="no-print">
+          <RecipeComments recipeSlug={recipe.slug} />
         </div>
       </article>
     </>
