@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 import { projects } from '@/data/projects';
+import { ProjectComments } from '@/components/ProjectComments';
 
 const categoryColors: Record<string, string> = {
   ESP32: 'border-accent-500/40 bg-accent-500/10 text-accent-300',
@@ -197,6 +198,9 @@ export function ProjectDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Komentáře a diskuze k danému projektu */}
+        <ProjectComments projectSlug={project.slug} />
       </article>
     </>
   );
