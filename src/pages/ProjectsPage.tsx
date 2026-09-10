@@ -1,22 +1,48 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FolderKanban } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 import { ProjectCard } from '@/components/ProjectCard';
-import { projects, categories } from '@/data/projects';
-import type { ProjectCategory } from '@/types';
+import { projects as initialProjects, categories } from '@/data/projects';
+import { supabase } from '@/supabase';
+import type { Project, ProjectCategory } from '@/types';
 
 type Filter = 'Vše' | ProjectCategory;
 
 export function ProjectsPage() {
   const [filter, setFilter] = useState<Filter>('Vše');
+  const [projectList, setProjectList] = useState<Project[]>(initialProjects);
+
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('date', { ascending: false });
+
+        if (error) {
+          console.error('Chyba při stahování projektů ze Supabase:', error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          setProjectList(data as Project[]);
+        }
+      } catch (err) {
+        console.error('Neočekávaná chyba při načítání projektů:', err);
+      }
+    }
+
+    fetchProjects();
+  }, []);
 
   const filtered = useMemo(() => {
-    const sorted = [...projects].sort(
+    const sorted = [...projectList].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
     if (filter === 'Vše') return sorted;
     return sorted.filter((p) => p.category === filter);
-  }, [filter]);
+  }, [filter, projectList]);
 
   const filters: Filter[] = ['Vše', ...categories];
 

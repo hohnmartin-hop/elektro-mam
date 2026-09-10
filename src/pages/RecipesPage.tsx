@@ -1,12 +1,43 @@
+import { useState, useMemo, useEffect } from 'react';
 import { ChefHat } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 import { RecipeCard } from '@/components/RecipeCard';
-import { recipes } from '@/data/recipes';
+import { recipes as initialRecipes } from '@/data/recipes';
+import { supabase } from '@/supabase';
+import type { Recipe } from '@/types';
 
 export function RecipesPage() {
-  const sorted = [...recipes].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
+  const [recipeList, setRecipeList] = useState<Recipe[]>(initialRecipes);
+
+  useEffect(() => {
+    async function fetchRecipes() {
+      try {
+        const { data, error } = await supabase
+          .from('recipes')
+          .select('*')
+          .order('date', { ascending: false });
+
+        if (error) {
+          console.error('Chyba při stahování receptů ze Supabase:', error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          setRecipeList(data as Recipe[]);
+        }
+      } catch (err) {
+        console.error('Neočekávaná chyba při načítání receptů:', err);
+      }
+    }
+
+    fetchRecipes();
+  }, []);
+
+  const sorted = useMemo(() => {
+    return [...recipeList].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [recipeList]);
 
   return (
     <>
