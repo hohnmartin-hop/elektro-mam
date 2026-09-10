@@ -9,6 +9,7 @@ import { AboutPage } from '@/pages/AboutPage';
 import { ContactPage } from '@/pages/ContactPage';
 import { Guestbook } from '@/pages/Guestbook';
 import { LoginPage } from '@/pages/LoginPage';
+import { AdminPage } from '@/pages/AdminPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 const router = createBrowserRouter([
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: '/kontakt', element: <ContactPage /> },
       { path: '/kniha-prani', element: <Guestbook /> },
       { path: '/login', element: <LoginPage /> },
+      { path: '/admin', element: <AdminPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
