@@ -29,7 +29,7 @@ const categoryColors: Record<string, string> = {
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const project = projects.find((p) => p.slug === slug);
-
+A
   if (!project) {
     return <Navigate to="/projekty" replace />;
   }
