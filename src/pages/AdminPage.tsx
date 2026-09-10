@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { AdminRecipes } from '../components/admin/AdminRecipes';
+import { AdminProjects } from '../components/admin/AdminProjects';
 
 interface GuestbookEntry {
   id: number;
@@ -16,7 +18,7 @@ export const AdminPage: React.FC = () => {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'guestbook' | 'projects'>('guestbook');
+  const [activeTab, setActiveTab] = useState<'projects' | 'recipes' | 'guestbook'>('projects');
 
   const fetchEntries = async () => {
     setLoading(true);
@@ -44,22 +46,33 @@ export const AdminPage: React.FC = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          navigate('/login', { replace: true });
+          navigate('/login');
           return;
         }
-        setIsCheckingAuth(false);
-        fetchEntries();
       } catch {
-        navigate('/login', { replace: true });
+        navigate('/login');
+        return;
+      } finally {
+        setIsCheckingAuth(false);
       }
+
+      fetchEntries();
     };
 
     checkSession();
   }, [navigate]);
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/login');
+    } catch (err: any) {
+      alert('Chyba při odhlašování: ' + err.message);
+    }
+  };
+
   const handleDelete = async (id: number) => {
-    const confirmDelete = window.confirm('Opravdu chceš tento vzkaz smazat?');
-    if (!confirmDelete) return;
+    if (!window.confirm('Opravdu chceš tento vzkaz smazat?')) return;
 
     try {
       const { error } = await supabase
@@ -67,72 +80,81 @@ export const AdminPage: React.FC = () => {
         .delete()
         .eq('id', id);
 
-      if (error) {
-        alert(`Chyba při mazání: ${error.message}`);
-      } else {
-        setEntries((prev) => prev.filter((entry) => entry.id !== id));
-      }
-    } catch {
-      alert('Došlo k neočekávané chybě při mazání.');
+      if (error) throw error;
+      setEntries(prev => prev.filter(e => e.id !== id));
+    } catch (err: any) {
+      alert('Chyba při mazání: ' + err.message);
     }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login', { replace: true });
   };
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
-        <div className="text-neutral-400 text-sm flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          Ověřuji přihlášení...
-        </div>
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+        <div className="text-neutral-500 text-sm">Ověřuji přihlášení...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white p-6 sm:p-10">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Horní lišta */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-neutral-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-6">
           <div>
-            <h1 className="text-2xl font-bold text-amber-500">Administrace Elektro MaM</h1>
-            <p className="text-sm text-neutral-400 mt-1">Správa obsahu a vzkazů návštěvníků</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Administrace webu</h1>
+            <p className="text-sm text-neutral-400 mt-1">Správa projektů, receptů a vzkazů návštěvníků</p>
           </div>
           <button
             onClick={handleLogout}
-            className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-neutral-700 cursor-pointer"
+            className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-neutral-700 cursor-pointer self-start sm:self-auto"
           >
             Odhlásit se
           </button>
         </div>
 
         {/* Přepínání sekcí */}
-        <div className="flex gap-3 my-6">
+        <div className="flex flex-wrap gap-3 my-6">
+          <button
+            onClick={() => setActiveTab('projects')}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+              activeTab === 'projects'
+                ? 'bg-sky-500 text-neutral-950 font-bold'
+                : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+            }`}
+          >
+            Projekty
+          </button>
+          <button
+            onClick={() => setActiveTab('recipes')}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+              activeTab === 'recipes'
+                ? 'bg-amber-500 text-neutral-950 font-bold'
+                : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+            }`}
+          >
+            Recepty
+          </button>
           <button
             onClick={() => setActiveTab('guestbook')}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
               activeTab === 'guestbook'
-                ? 'bg-amber-500 text-neutral-950'
+                ? 'bg-amber-500 text-neutral-950 font-bold'
                 : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
             }`}
           >
             Kniha přání ({entries.length})
           </button>
-          <button
-            onClick={() => setActiveTab('projects')}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
-              activeTab === 'projects'
-                ? 'bg-amber-500 text-neutral-950'
-                : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
-            }`}
-          >
-            Správa projektů a receptů
-          </button>
         </div>
+
+        {/* Obsah záložky Projekty */}
+        {activeTab === 'projects' && (
+          <AdminProjects />
+        )}
+
+        {/* Obsah záložky Recepty */}
+        {activeTab === 'recipes' && (
+          <AdminRecipes />
+        )}
 
         {/* Obsah záložky Kniha přání */}
         {activeTab === 'guestbook' && (
@@ -151,24 +173,28 @@ export const AdminPage: React.FC = () => {
               </div>
             ) : (
               <div className="grid gap-4">
-                {entries.map((entry) => (
+                {entries.map(entry => (
                   <div
                     key={entry.id}
-                    className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col sm:flex-row justify-between items-start gap-4"
+                    className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col sm:flex-row sm:items-start justify-between gap-4"
                   >
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-white">{entry.name}</span>
-                        {entry.type && (
-                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            {entry.type}
-                          </span>
-                        )}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm">{entry.name}</span>
                         <span className="text-xs text-neutral-500">
-                          {new Date(entry.created_at).toLocaleString('cs-CZ')}
+                          {new Date(entry.created_at).toLocaleDateString('cs-CZ', {
+                            day: 'numeric',
+                            month: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-400">
+                          {entry.type}
                         </span>
                       </div>
-                      <p className="text-sm text-neutral-300 whitespace-pre-wrap">{entry.message}</p>
+                      <p className="text-neutral-300 text-sm whitespace-pre-wrap">{entry.message}</p>
                     </div>
 
                     <button
@@ -181,13 +207,6 @@ export const AdminPage: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Záložka pro projekty / recepty */}
-        {activeTab === 'projects' && (
-          <div className="p-8 bg-neutral-900 border border-neutral-800 rounded-2xl text-center text-neutral-400 text-sm">
-            Tuto sekci připravíme v dalším kroku.
           </div>
         )}
       </div>
