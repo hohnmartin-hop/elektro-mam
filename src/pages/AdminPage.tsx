@@ -12,6 +12,7 @@ interface GuestbookEntry {
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -39,8 +40,22 @@ export const AdminPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchEntries();
-  }, []);
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate('/login', { replace: true });
+          return;
+        }
+        setIsCheckingAuth(false);
+        fetchEntries();
+      } catch {
+        navigate('/login', { replace: true });
+      }
+    };
+
+    checkSession();
+  }, [navigate]);
 
   const handleDelete = async (id: number) => {
     const confirmDelete = window.confirm('Opravdu chceš tento vzkaz smazat?');
@@ -64,8 +79,19 @@ export const AdminPage: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
+        <div className="text-neutral-400 text-sm flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          Ověřuji přihlášení...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white p-6 sm:p-10">
