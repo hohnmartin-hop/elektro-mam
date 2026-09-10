@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 
-// Vytvoření klienta přímo zde s garantovanou čistou URL
+// Přímé nastavení s garantovanou čistou URL
 const supabaseUrl = 'https://crulaktbptkfhzqywddg.supabase.co';
 const supabaseAnonKey = 'sb_publishable__IBW_vUfYLtr-eBEVzjk0g_yLACR83T';
 const localSupabase = createClient(supabaseUrl, supabaseAnonKey);
