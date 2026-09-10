@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
-
-// Přímé nastavení s garantovanou čistou URL
-const supabaseUrl = 'https://crulaktbptkfhzqywddg.supabase.co';
-const supabaseAnonKey = 'sb_publishable__IBW_vUfYLtr-eBEVzjk0g_yLACR83T';
-const localSupabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '../supabase';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +15,7 @@ export const LoginPage: React.FC = () => {
     setErrorMessage('');
 
     try {
-      const { error } = await localSupabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
       });
