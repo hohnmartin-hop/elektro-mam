@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { Project, ProjectCategory, Component, ProjectStep } from '../../types';
-import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image, FileText } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';
+import { parseProjectDocx } from '../../utils/docxParser';
+
 const CATEGORIES: ProjectCategory[] = [
   'ESP32',
   'Arduino',
@@ -21,6 +23,7 @@ export const AdminProjects: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isImportingDocx, setIsImportingDocx] = useState(false);
 
   const initialFormState: Project = {
     slug: '',
@@ -102,6 +105,35 @@ export const AdminProjects: React.FC = () => {
       setProjects(prev => prev.filter(p => p.slug !== slug));
     } catch (err: any) {
       alert('Chyba při mazání: ' + err.message);
+    }
+  };
+
+  // Správa importu z Wordu (.docx)
+  const handleDocxImport = async (file: File) => {
+    if (!file.name.endsWith('.docx')) {
+      alert('Vyber prosím soubor typu Word (.docx).');
+      return;
+    }
+
+    try {
+      setIsImportingDocx(true);
+      const parsed = await parseProjectDocx(file);
+
+      setFormData(prev => ({
+        ...prev,
+        title: parsed.title,
+        slug: parsed.slug,
+        shortDescription: parsed.shortDescription,
+        description: parsed.description,
+        // Pravidlo: Pokud fotka ještě není vybraná ručně a ve Wordu fotka je, použije se
+        image: prev.image ? prev.image : (parsed.imageBase64 || prev.image),
+        imageAlt: prev.imageAlt || parsed.title
+      }));
+    } catch (err) {
+      console.error('Chyba při čtení Word souboru:', err);
+      alert('Při zpracování souboru Word došlo k chybě.');
+    } finally {
+      setIsImportingDocx(false);
     }
   };
 
@@ -242,6 +274,35 @@ export const AdminProjects: React.FC = () => {
             </button>
           </div>
 
+          {/* Rychlý import z Wordu (.docx) */}
+          <div className="p-5 rounded-2xl bg-neutral-950 border-2 border-dashed border-neutral-800 hover:border-sky-500/60 transition-colors text-center">
+            <input
+              type="file"
+              id="docx-upload"
+              accept=".docx"
+              className="hidden"
+              disabled={isImportingDocx}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleDocxImport(e.target.files[0]);
+                  e.target.value = '';
+                }
+              }}
+            />
+            <label
+              htmlFor="docx-upload"
+              className="cursor-pointer flex flex-col items-center justify-center gap-2 text-neutral-300 hover:text-white"
+            >
+              <FileText className="w-8 h-8 text-sky-500" />
+              <span className="font-semibold text-sm text-sky-400">
+                {isImportingDocx ? '⏳ Načítám data z Wordu...' : '📄 Klikni zde pro načtení projektu z Wordu (.docx)'}
+              </span>
+              <span className="text-xs text-neutral-500">
+                Automaticky předvyplní název, slug, popis a vloží první obrázek z dokumentu
+              </span>
+            </label>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
@@ -302,7 +363,7 @@ export const AdminProjects: React.FC = () => {
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                  URL hlavního obrázku
+                  Hlavní obrázek projektu
                 </label>
                 <button
                   type="button"
@@ -317,9 +378,14 @@ export const AdminProjects: React.FC = () => {
                 type="text"
                 value={formData.image}
                 onChange={e => setFormData({ ...formData, image: e.target.value })}
-                placeholder="/projects/nazev-fotky.jpg"
+                placeholder="/projects/nazev-fotky.jpg nebo Base64 z Wordu"
                 className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:outline-none focus:border-sky-500"
               />
+              {formData.image && (
+                <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden border border-neutral-800 bg-neutral-950">
+                  <img src={formData.image} alt="Náhled" className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">

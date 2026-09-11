@@ -158,13 +158,17 @@ export function ProjectDetailPage() {
             )}
 
             {/* Description */}
+            {/* Description */}
             {project.description && (
               <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
                 <div className="mb-3 flex items-center gap-2">
                   <Cpu className="h-5 w-5 text-accent-400" aria-hidden />
                   <h2 className="text-xl font-semibold text-white">Popis</h2>
                 </div>
-                <p className="text-ink-100 leading-relaxed">{project.description}</p>
+                <div 
+                  className="text-ink-100 leading-relaxed space-y-4 [&>img]:rounded-xl [&>img]:max-h-96 [&>img]:mx-auto [&>img]:my-4 [&>img]:border [&>img]:border-ink-500/40"
+                  dangerouslySetInnerHTML={{ __html: project.description }}
+                />
               </section>
             )}
 
