@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -10,20 +11,78 @@ import {
   StickyNote,
 } from 'lucide-react';
 import { Seo } from '@/components/Seo';
-import { recipes } from '@/data/recipes';
+import { recipes as localRecipes } from '@/data/recipes';
 import { RecipeComments } from '@/components/RecipeComments';
+import { supabase } from '../supabase';
+import { Recipe } from '../types';
 
 export function RecipeDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const recipe = recipes.find((r) => r.slug === slug);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  if (!recipe) {
-    return <Navigate to="/recepty" replace />;
-  }
+  useEffect(() => {
+    async function loadRecipe() {
+      if (!slug) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('recipes')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Chyba při načítání ze Supabase:', error.message);
+        }
+
+        if (data) {
+          setRecipe(data as Recipe);
+        } else {
+          const local = localRecipes.find((r) => r.slug === slug);
+          if (local) {
+            setRecipe(local);
+          } else {
+            setNotFound(true);
+          }
+        }
+      } catch (err) {
+        console.error('Neočekávaná chyba při načítání receptu:', err);
+        const local = localRecipes.find((r) => r.slug === slug);
+        if (local) {
+          setRecipe(local);
+        } else {
+          setNotFound(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadRecipe();
+  }, [slug]);
 
   const handlePrint = () => {
     window.print();
   };
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-content px-4 py-24 text-center text-ink-300">
+        <p className="text-sm">Načítám recept...</p>
+      </div>
+    );
+  }
+
+  if (notFound || !recipe) {
+    return <Navigate to="/recepty" replace />;
+  }
 
   return (
     <>
@@ -91,7 +150,7 @@ export function RecipeDetailPage() {
           <div className="no-print mt-8 overflow-hidden rounded-2xl border border-ink-500/60">
             <img
               src={recipe.image}
-              alt={recipe.imageAlt}
+              alt={recipe.imageAlt || recipe.title}
               className="w-full object-cover"
               loading="lazy"
             />
@@ -112,7 +171,7 @@ export function RecipeDetailPage() {
             <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 lg:col-span-1">
               <h2 className="mb-4 text-lg font-semibold text-white">Ingredience</h2>
               <ul className="space-y-2">
-                {recipe.ingredients.map((ing, i) => (
+                {recipe.ingredients?.map((ing, i) => (
                   <li
                     key={i}
                     className="flex items-center justify-between border-b border-ink-500/30 pb-2 text-sm last:border-0"
@@ -131,7 +190,7 @@ export function RecipeDetailPage() {
                 <h2 className="text-lg font-semibold text-white">Postup</h2>
               </div>
               <ol className="space-y-4">
-                {recipe.steps.map((step, i) => (
+                {recipe.steps?.map((step, i) => (
                   <li key={i} className="flex gap-4">
                     <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-circuit-amber/40 bg-circuit-amber/10 font-mono text-sm font-bold text-circuit-amber">
                       {i + 1}
