@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -12,8 +13,10 @@ import {
   Cpu,
 } from 'lucide-react';
 import { Seo } from '@/components/Seo';
-import { projects } from '@/data/projects';
+import { projects as localProjects } from '@/data/projects';
 import { ProjectComments } from '@/components/ProjectComments';
+import { supabase } from '../supabase';
+import { Project } from '../types';
 
 const categoryColors: Record<string, string> = {
   ESP32: 'border-accent-500/40 bg-accent-500/10 text-accent-300',
@@ -28,10 +31,70 @@ const categoryColors: Record<string, string> = {
 
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const project = projects.find((p) => p.slug === slug);
-  if (!project) {
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    async function loadProject() {
+      if (!slug) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Chyba při načítání ze Supabase:', error.message);
+        }
+
+        if (data) {
+          setProject(data as Project);
+        } else {
+          const local = localProjects.find((p) => p.slug === slug);
+          if (local) {
+            setProject(local);
+          } else {
+            setNotFound(true);
+          }
+        }
+      } catch (err) {
+        console.error('Neočekávaná chyba při načítání projektu:', err);
+        const local = localProjects.find((p) => p.slug === slug);
+        if (local) {
+          setProject(local);
+        } else {
+          setNotFound(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProject();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-content px-4 py-24 text-center text-ink-300">
+        <p className="text-sm">Načítám projekt...</p>
+      </div>
+    );
+  }
+
+  if (notFound || !project) {
     return <Navigate to="/projekty" replace />;
   }
+
+  const categoryBadgeClass =
+    categoryColors[project.category] ?? categoryColors.Ostatní;
 
   return (
     <>
@@ -52,7 +115,7 @@ export function ProjectDetailPage() {
 
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <span className={`chip ${categoryColors[project.category] ?? categoryColors.Ostatní}`}>
+          <span className={`chip ${categoryBadgeClass}`}>
             <Tag className="mr-1 h-3 w-3" aria-hidden />
             {project.category}
           </span>
@@ -73,7 +136,7 @@ export function ProjectDetailPage() {
         <div className="mt-8 overflow-hidden rounded-2xl border border-ink-500/60">
           <img
             src={project.image}
-            alt={project.imageAlt}
+            alt={project.imageAlt || project.title}
             className="w-full object-cover"
             loading="lazy"
           />
@@ -84,22 +147,26 @@ export function ProjectDetailPage() {
           {/* Main content */}
           <div className="space-y-8 lg:col-span-2">
             {/* Purpose */}
-            <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
-              <div className="mb-3 flex items-center gap-2">
-                <Target className="h-5 w-5 text-accent-400" aria-hidden />
-                <h2 className="text-xl font-semibold text-white">Účel projektu</h2>
-              </div>
-              <p className="text-ink-100 leading-relaxed">{project.purpose}</p>
-            </section>
+            {project.purpose && (
+              <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <Target className="h-5 w-5 text-accent-400" aria-hidden />
+                  <h2 className="text-xl font-semibold text-white">Účel projektu</h2>
+                </div>
+                <p className="text-ink-100 leading-relaxed">{project.purpose}</p>
+              </section>
+            )}
 
             {/* Description */}
-            <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
-              <div className="mb-3 flex items-center gap-2">
-                <Cpu className="h-5 w-5 text-accent-400" aria-hidden />
-                <h2 className="text-xl font-semibold text-white">Popis</h2>
-              </div>
-              <p className="text-ink-100 leading-relaxed">{project.description}</p>
-            </section>
+            {project.description && (
+              <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-accent-400" aria-hidden />
+                  <h2 className="text-xl font-semibold text-white">Popis</h2>
+                </div>
+                <p className="text-ink-100 leading-relaxed">{project.description}</p>
+              </section>
+            )}
 
             {/* Steps */}
             {project.steps && project.steps.length > 0 && (
