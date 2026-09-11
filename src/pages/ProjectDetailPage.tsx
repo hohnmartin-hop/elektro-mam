@@ -107,36 +107,46 @@ export function ProjectDetailPage() {
         {/* Back link */}
         <Link
           to="/projekty"
-          className="mb-6 inline-flex items-center gap-2 text-sm text-ink-200 transition-colors hover:text-accent-400"
+          className="inline-flex items-center gap-2 text-sm text-ink-300 transition-colors hover:text-accent-400"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Zpět na projekty
         </Link>
 
         {/* Header */}
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <span className={`chip ${categoryBadgeClass}`}>
-            <Tag className="mr-1 h-3 w-3" aria-hidden />
-            {project.category}
-          </span>
-          <span className="flex items-center gap-1.5 text-xs text-ink-300">
-            <Calendar className="h-3.5 w-3.5" aria-hidden />
-            {new Date(project.date).toLocaleDateString('cs-CZ', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </span>
-        </div>
+        <header className="mt-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-wider ${categoryBadgeClass}`}
+            >
+              <Tag className="h-3 w-3" aria-hidden />
+              {project.category}
+            </span>
+            <span className="flex items-center gap-1 text-xs text-ink-300">
+              <Calendar className="h-3.5 w-3.5" aria-hidden />
+              <time dateTime={project.date}>
+                {new Date(project.date).toLocaleDateString('cs-CZ', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </time>
+            </span>
+          </div>
 
-        <h1 className="text-3xl font-bold text-white sm:text-4xl lg:text-5xl">{project.title}</h1>
-        <p className="mt-4 max-w-3xl text-lg text-ink-100">{project.shortDescription}</p>
+          <h1 className="mt-4 font-mono text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            {project.title}
+          </h1>
+          <p className="mt-4 text-lg text-ink-100 leading-relaxed">
+            {project.shortDescription}
+          </p>
+        </header>
 
-        {/* Hero image */}
-        <div className="mt-8 overflow-hidden rounded-2xl border border-ink-500/60">
+        {/* Cover image */}
+        <div className="mt-8 overflow-hidden rounded-2xl border border-ink-500/60 bg-ink-800/40">
           <img
             src={project.image}
-            alt={project.imageAlt || project.title}
+            alt={project.title}
             className="w-full object-cover"
             loading="lazy"
           />
@@ -144,7 +154,7 @@ export function ProjectDetailPage() {
 
         {/* Content grid */}
         <div className="mt-10 grid gap-8 lg:grid-cols-3">
-          {/* Main content */}
+          {/* Main content column */}
           <div className="space-y-8 lg:col-span-2">
             {/* Purpose */}
             {project.purpose && (
@@ -157,22 +167,7 @@ export function ProjectDetailPage() {
               </section>
             )}
 
-        {/* Description */}
-            {project.description && (
-              <section className="mx-auto max-w-4xl rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 sm:p-8">
-                <div className="mb-4 flex items-center justify-center gap-2 border-b border-ink-500/40 pb-3">
-                  <Cpu className="h-5 w-5 text-accent-400" aria-hidden />
-                  <h2 className="text-xl font-semibold text-white">Popis</h2>
-                </div>
-                <div 
-                  className="text-ink-100 leading-relaxed space-y-4 text-left [&>img]:rounded-xl [&>img]:max-h-96 [&>img]:mx-auto [&>img]:my-6 [&>img]:border [&>img]:border-ink-500/40"
-                  dangerouslySetInnerHTML={{ __html: project.description }}
-                />
-              </section>
-            )}
-
             {/* Steps */}
-            {/* Description */}
             {project.steps && project.steps.length > 0 && (
               <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
                 <div className="mb-4 flex items-center gap-2">
@@ -269,8 +264,24 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
+        {/* Description - vycentrováno samostatně na střed přes plnou šířku */}
+        {project.description && (
+          <section className="mx-auto mt-12 max-w-4xl rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 sm:p-8">
+            <div className="mb-6 flex items-center justify-center gap-2 border-b border-ink-500/40 pb-4">
+              <Cpu className="h-6 w-6 text-accent-400" aria-hidden />
+              <h2 className="text-2xl font-semibold text-white">Popis</h2>
+            </div>
+            <div 
+              className="text-ink-100 leading-relaxed space-y-4 text-left [&>img]:rounded-xl [&>img]:max-h-96 [&>img]:mx-auto [&>img]:my-6 [&>img]:border [&>img]:border-ink-500/40"
+              dangerouslySetInnerHTML={{ __html: project.description }}
+            />
+          </section>
+        )}
+
         {/* Komentáře a diskuze k danému projektu */}
-        <ProjectComments projectSlug={project.slug} />
+        <div className="mt-12">
+          <ProjectComments projectSlug={project.slug} />
+        </div>
       </article>
     </>
   );
