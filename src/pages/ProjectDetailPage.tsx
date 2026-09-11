@@ -157,22 +157,22 @@ export function ProjectDetailPage() {
               </section>
             )}
 
-            {/* Description */}
-            {/* Description */}
+        {/* Description */}
             {project.description && (
-              <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
-                <div className="mb-3 flex items-center gap-2">
+              <section className="mx-auto max-w-4xl rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 sm:p-8">
+                <div className="mb-4 flex items-center justify-center gap-2 border-b border-ink-500/40 pb-3">
                   <Cpu className="h-5 w-5 text-accent-400" aria-hidden />
                   <h2 className="text-xl font-semibold text-white">Popis</h2>
                 </div>
                 <div 
-                  className="text-ink-100 leading-relaxed space-y-4 [&>img]:rounded-xl [&>img]:max-h-96 [&>img]:mx-auto [&>img]:my-4 [&>img]:border [&>img]:border-ink-500/40"
+                  className="text-ink-100 leading-relaxed space-y-4 text-left [&>img]:rounded-xl [&>img]:max-h-96 [&>img]:mx-auto [&>img]:my-6 [&>img]:border [&>img]:border-ink-500/40"
                   dangerouslySetInnerHTML={{ __html: project.description }}
                 />
               </section>
             )}
 
             {/* Steps */}
+            {/* Description */}
             {project.steps && project.steps.length > 0 && (
               <section className="rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
                 <div className="mb-4 flex items-center gap-2">
