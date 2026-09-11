@@ -332,19 +332,4 @@ void loop() {
     notes:
       'Při práci s CO2 laserem vždy používej ventilaci a ochranné brýle – PVC plexi uvolňuje toxické plyny.',
   },
-    {
-    "slug": "halluv-senzor-detektor-magnetickeho-pole",
-    "title": "Hallův senzor - detektor magnetického pole",
-    "category": "DIY",
-    "shortDescription": "Hallův senzor nebo také Hallova sonda je součástka, která detekuje či měří magnetické pole. Pracuje na principu Hallova jevu. Existují dva základní typy: Prvním typem jsou lineární Hallovy senzory, které mají na výstupu napětí úměrné hodnotě magnetické indukce. Druhým typem jsou logické Hallovy senzory, jejichž výstup se může nacházet jen ve dvou stavech. Překlápí se při určité prahové hodnotě a mohou mít určitou hysterezi.    Já jsem při svých experimentech použil hallův senzor z bezkartáčového větráku z PC. V těch se používá logický senzor. V mém případě to byl senzor s dvěma výstupy v provední otevřený kolektor - vždy je jeden výstup otevřený a jeden zavřený. Takový senzor se používá ve větrácích s dvojitou cívkou. Střed dvojité cívky je připojen na + a konce na výstupy senzoru, které obvykle mají povolený proud cca 300 - 800mA. Nejčastěji jsem se setkal s klasickým vývodovým provedením v pouzdře se 4 vývody. Senzory bývají označené stroze 276, 277 apod. Maximální napětí je většinou 18 - 24V. Bývají odolné proti přepólování, ale nespoléhejte na to, dokud nenajdete datasheet. Překlápěcí úrovně jsou obvykle +/- 50 až 120 Gaussů (5 - 12 mT).    Z tohoto jsem si senzoru postavil jednoduchý detektor magnetického pole, viz schéma na Obr. 2. Detektor indikuje přítomnost a polaritu magnetického pole. Vzhledem k mírné nesymetrii senzoru je při slabém nebo žádném magnetickém poli otevřen vždy ten samý výstup. Funkci detektoru znázorňuje Video 2.    Mohl by vás zajímat také Větrák s barevným LED efektem.",
-    "image": "/fotky/halluv-senzor-1.png",
-    "imageAlt": "Hallův senzor - detektor magnetického pole",
-    "date": "2026-09-08",
-    "purpose": "",
-    "description": "Hallův senzor nebo také Hallova sonda je součástka, která detekuje či měří magnetické pole. Pracuje na principu Hallova jevu. Existují dva základní typy: Prvním typem jsou lineární Hallovy senzory, které mají na výstupu napětí úměrné hodnotě magnetické indukce. Druhým typem jsou logické Hallovy senzory, jejichž výstup se může nacházet jen ve dvou stavech. Překlápí se při určité prahové hodnotě a mohou mít určitou hysterezi.    Já jsem při svých experimentech použil hallův senzor z bezkartáčového větráku z PC. V těch se používá logický senzor. V mém případě to byl senzor s dvěma výstupy v provední otevřený kolektor - vždy je jeden výstup otevřený a jeden zavřený. Takový senzor se používá ve větrácích s dvojitou cívkou. Střed dvojité cívky je připojen na + a konce na výstupy senzoru, které obvykle mají povolený proud cca 300 - 800mA. Nejčastěji jsem se setkal s klasickým vývodovým provedením v pouzdře se 4 vývody. Senzory bývají označené stroze 276, 277 apod. Maximální napětí je většinou 18 - 24V. Bývají odolné proti přepólování, ale nespoléhejte na to, dokud nenajdete datasheet. Překlápěcí úrovně jsou obvykle +/- 50 až 120 Gaussů (5 - 12 mT).    Z tohoto jsem si senzoru postavil jednoduchý detektor magnetického pole, viz schéma na Obr. 2. Detektor indikuje přítomnost a polaritu magnetického pole. Vzhledem k mírné nesymetrii senzoru je při slabém nebo žádném magnetickém poli otevřen vždy ten samý výstup. Funkci detektoru znázorňuje Video 2.    Mohl by vás zajímat také Větrák s barevným LED efektem.\n\nObr. 1 - Schéma zapojení nejjednoduššího bezkartáčového větráku (\"větráku z PC\").Obr. 2 - Schéma detektoru magnetického pole",
-    "components": [],
-    "steps": [],
-    "notes": ""
-  },
-
 ];
