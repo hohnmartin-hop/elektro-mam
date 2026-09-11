@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { Recipe, RecipeIngredient, RecipeStep } from '../../types';
-import { Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw, Image } from 'lucide-react';
+import { ImageSelectorModal } from './ImageSelectorModal';
 
 export const AdminRecipes: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -9,6 +10,7 @@ export const AdminRecipes: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const initialFormState: Recipe = {
     slug: '',
@@ -22,11 +24,10 @@ export const AdminRecipes: React.FC = () => {
     steps: [{ body: '' }],
     notes: '',
     servings: '',
-    prepTime: ''
+    prepTime: '',
   };
 
   const [formData, setFormData] = useState<Recipe>(initialFormState);
-  const [isNewRecipe, setIsNewRecipe] = useState(true);
 
   const fetchRecipes = async () => {
     setLoading(true);
@@ -35,12 +36,15 @@ export const AdminRecipes: React.FC = () => {
       const { data, error } = await supabase
         .from('recipes')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false });
 
-      if (error) throw error;
-      setRecipes(data || []);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Chyba při načítání receptů.');
+      if (error) {
+        setErrorMsg(error.message);
+      } else {
+        setRecipes(data || []);
+      }
+    } catch {
+      setErrorMsg('Chyba při stahování receptů.');
     } finally {
       setLoading(false);
     }
@@ -50,111 +54,55 @@ export const AdminRecipes: React.FC = () => {
     fetchRecipes();
   }, []);
 
-  const handleCreateNew = () => {
-    setFormData({
-      ...initialFormState,
-      date: new Date().toISOString().split('T')[0]
-    });
-    setIsNewRecipe(true);
+  const handleEdit = (recipe: Recipe) => {
+    setFormData(recipe);
     setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleEdit = (recipe: Recipe) => {
-    setFormData({
-      ...recipe,
-      ingredients: recipe.ingredients && recipe.ingredients.length > 0 ? recipe.ingredients : [{ name: '', amount: '' }],
-      steps: recipe.steps && recipe.steps.length > 0 ? recipe.steps : [{ body: '' }],
-      notes: recipe.notes || '',
-      servings: recipe.servings || '',
-      prepTime: recipe.prepTime || ''
-    });
-    setIsNewRecipe(false);
-    setIsEditing(true);
+  const handleCancel = () => {
+    setFormData(initialFormState);
+    setIsEditing(false);
   };
 
   const handleDelete = async (slug: string) => {
-    if (!window.confirm(`Opravdu chceš smazat recept se slugem "${slug}"?`)) return;
+    if (!window.confirm('Opravdu chceš smazat tento recept?')) return;
 
     try {
-      const { error } = await supabase
-        .from('recipes')
-        .delete()
-        .eq('slug', slug);
-
-      if (error) throw error;
-      setRecipes(prev => prev.filter(r => r.slug !== slug));
+      const { error } = await supabase.from('recipes').delete().eq('slug', slug);
+      if (error) {
+        alert('Chyba při mazání: ' + error.message);
+      } else {
+        setRecipes(recipes.filter(r => r.slug !== slug));
+        if (formData.slug === slug) handleCancel();
+      }
     } catch (err: any) {
-      alert('Chyba při mazání: ' + err.message);
+      alert('Chyba: ' + err.message);
     }
-  };
-
-  const handleIngredientChange = (index: number, field: keyof RecipeIngredient, value: string) => {
-    const updated = [...formData.ingredients];
-    updated[index][field] = value;
-    setFormData({ ...formData, ingredients: updated });
-  };
-
-  const addIngredient = () => {
-    setFormData({
-      ...formData,
-      ingredients: [...formData.ingredients, { name: '', amount: '' }]
-    });
-  };
-
-  const removeIngredient = (index: number) => {
-    setFormData({
-      ...formData,
-      ingredients: formData.ingredients.filter((_, i) => i !== index)
-    });
-  };
-
-  const handleStepChange = (index: number, value: string) => {
-    const updated = [...formData.steps];
-    updated[index].body = value;
-    setFormData({ ...formData, steps: updated });
-  };
-
-  const addStep = () => {
-    setFormData({
-      ...formData,
-      steps: [...formData.steps, { body: '' }]
-    });
-  };
-
-  const removeStep = (index: number) => {
-    setFormData({
-      ...formData,
-      steps: formData.steps.filter((_, i) => i !== index)
-    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    const payload: Recipe = {
-      ...formData,
-      slug: formData.slug.trim(),
-      title: formData.title.trim(),
-      ingredients: formData.ingredients.filter(ing => ing.name.trim() !== ''),
-      steps: formData.steps.filter(step => step.body.trim() !== '')
-    };
-
-    if (!payload.slug || !payload.title) {
-      alert('Pole Slug a Název receptu jsou povinné.');
-      setSaving(false);
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('recipes')
-        .upsert(payload);
+      if (isEditing) {
+        const { error } = await supabase
+          .from('recipes')
+          .update(formData)
+          .eq('slug', formData.slug);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setIsEditing(false);
-      fetchRecipes();
+        setRecipes(recipes.map(r => (r.slug === formData.slug ? formData : r)));
+        setIsEditing(false);
+      } else {
+        const { error } = await supabase.from('recipes').insert([formData]);
+        if (error) throw error;
+
+        setRecipes([formData, ...recipes]);
+      }
+      setFormData(initialFormState);
     } catch (err: any) {
       alert('Chyba při ukládání: ' + err.message);
     } finally {
@@ -162,58 +110,66 @@ export const AdminRecipes: React.FC = () => {
     }
   };
 
+  const addIngredient = () => {
+    setFormData({
+      ...formData,
+      ingredients: [...formData.ingredients, { name: '', amount: '' }],
+    });
+  };
+
+  const removeIngredient = (index: number) => {
+    setFormData({
+      ...formData,
+      ingredients: formData.ingredients.filter((_, i) => i !== index),
+    });
+  };
+
+  const updateIngredient = (index: number, field: keyof RecipeIngredient, value: string) => {
+    const updated = [...formData.ingredients];
+    updated[index][field] = value;
+    setFormData({ ...formData, ingredients: updated });
+  };
+
+  const addStep = () => {
+    setFormData({
+      ...formData,
+      steps: [...formData.steps, { body: '' }],
+    });
+  };
+
+  const removeStep = (index: number) => {
+    setFormData({
+      ...formData,
+      steps: formData.steps.filter((_, i) => i !== index),
+    });
+  };
+
+  const updateStep = (index: number, value: string) => {
+    const updated = [...formData.steps];
+    updated[index].body = value;
+    setFormData({ ...formData, steps: updated });
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+    <div className="space-y-12">
+      {/* Formulář */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-800">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <ChefHat className="w-6 h-6 text-amber-500" />
-            Správa receptů
+            <ChefHat className="text-amber-500" />
+            {isEditing ? 'Upravit recept' : 'Přidat nový recept'}
           </h2>
-          <p className="text-sm text-neutral-400">Přidávání, úprava a mazání receptů v databázi Supabase</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={fetchRecipes}
-            disabled={loading}
-            className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white transition"
-            title="Aktualizovat seznam"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          {!isEditing && (
+          {isEditing && (
             <button
-              onClick={handleCreateNew}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 text-neutral-950 font-semibold hover:bg-amber-400 transition text-sm"
+              onClick={handleCancel}
+              className="text-sm text-neutral-400 hover:text-white flex items-center gap-1"
             >
-              <Plus className="w-4 h-4" />
-              Přidat recept
+              <X size={16} /> Zrušit úpravy
             </button>
           )}
         </div>
-      </div>
 
-      {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          {errorMsg}
-        </div>
-      )}
-
-      {isEditing && (
-        <form onSubmit={handleSubmit} className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl space-y-6">
-          <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
-            <h3 className="text-lg font-semibold text-white">
-              {isNewRecipe ? 'Nový recept' : `Úprava: ${formData.title}`}
-            </h3>
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
@@ -222,10 +178,10 @@ export const AdminRecipes: React.FC = () => {
               <input
                 type="text"
                 required
-                disabled={!isNewRecipe}
+                disabled={isEditing}
                 value={formData.slug}
                 onChange={e => setFormData({ ...formData, slug: e.target.value })}
-                placeholder="např. klobasy-domaci"
+                placeholder="napr-cesnekova-sul"
                 className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none disabled:opacity-50"
               />
             </div>
@@ -238,7 +194,6 @@ export const AdminRecipes: React.FC = () => {
                 required
                 value={formData.title}
                 onChange={e => setFormData({ ...formData, title: e.target.value })}
-                placeholder="např. Domácí klobásy"
                 className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
               />
             </div>
@@ -246,11 +201,11 @@ export const AdminRecipes: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-              Krátký popis *
+              Krátký popis (pro karty) *
             </label>
-            <input
-              type="text"
+            <textarea
               required
+              rows={2}
               value={formData.shortDescription}
               onChange={e => setFormData({ ...formData, shortDescription: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
@@ -259,9 +214,19 @@ export const AdminRecipes: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                URL obrázku *
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                  URL obrázku *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-xs text-amber-500 hover:text-amber-400 font-medium transition-colors"
+                >
+                  <Image size={14} />
+                  Vybrat z nahraných fotek
+                </button>
+              </div>
               <input
                 type="text"
                 required
@@ -290,22 +255,10 @@ export const AdminRecipes: React.FC = () => {
                 Datum *
               </label>
               <input
-                type="text"
+                type="date"
                 required
                 value={formData.date}
                 onChange={e => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                Doba přípravy
-              </label>
-              <input
-                type="text"
-                value={formData.prepTime || ''}
-                onChange={e => setFormData({ ...formData, prepTime: e.target.value })}
-                placeholder="např. 1 hodina"
                 className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
               />
             </div>
@@ -317,7 +270,19 @@ export const AdminRecipes: React.FC = () => {
                 type="text"
                 value={formData.servings || ''}
                 onChange={e => setFormData({ ...formData, servings: e.target.value })}
-                placeholder="např. 4 osoby"
+                placeholder="např. 4 porce"
+                className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                Doba přípravy
+              </label>
+              <input
+                type="text"
+                value={formData.prepTime || ''}
+                onChange={e => setFormData({ ...formData, prepTime: e.target.value })}
+                placeholder="např. 45 minut"
                 className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
               />
             </div>
@@ -325,92 +290,97 @@ export const AdminRecipes: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-              Úvodní text (Intro) *
+              Úvodní text
             </label>
             <textarea
-              required
               rows={3}
-              value={formData.intro}
+              value={formData.intro || ''}
               onChange={e => setFormData({ ...formData, intro: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none resize-y"
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
             />
           </div>
 
+          {/* Suroviny */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                 Suroviny
               </label>
               <button
                 type="button"
                 onClick={addIngredient}
-                className="text-xs text-amber-500 hover:text-amber-400 font-medium flex items-center gap-1"
+                className="text-xs text-amber-500 hover:text-amber-400 font-semibold flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Přidat surovinu
+                <Plus size={14} /> Přidat surovinu
               </button>
             </div>
             <div className="space-y-2">
-              {formData.ingredients.map((ing, idx) => (
-                <div key={idx} className="flex gap-2 items-center">
+              {formData.ingredients.map((ing, index) => (
+                <div key={index} className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Název suroviny"
                     value={ing.name}
-                    onChange={e => handleIngredientChange(idx, 'name', e.target.value)}
+                    onChange={e => updateIngredient(index, 'name', e.target.value)}
                     className="flex-1 px-4 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
                   />
                   <input
                     type="text"
                     placeholder="Množství"
                     value={ing.amount}
-                    onChange={e => handleIngredientChange(idx, 'amount', e.target.value)}
-                    className="w-32 sm:w-40 px-4 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
+                    onChange={e => updateIngredient(index, 'amount', e.target.value)}
+                    className="w-32 px-4 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeIngredient(idx)}
-                    disabled={formData.ingredients.length <= 1}
-                    className="p-2 rounded-lg text-neutral-500 hover:text-red-400 transition disabled:opacity-30"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {formData.ingredients.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeIngredient(index)}
+                      className="p-2 text-neutral-500 hover:text-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Postup */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                Postup přípravy (kroky)
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                Postup přípravy
               </label>
               <button
                 type="button"
                 onClick={addStep}
-                className="text-xs text-amber-500 hover:text-amber-400 font-medium flex items-center gap-1"
+                className="text-xs text-amber-500 hover:text-amber-400 font-semibold flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Přidat krok
+                <Plus size={14} /> Přidat krok
               </button>
             </div>
             <div className="space-y-2">
-              {formData.steps.map((step, idx) => (
-                <div key={idx} className="flex gap-2 items-start">
-                  <span className="pt-2 text-xs font-bold text-neutral-500 w-6 text-center">{idx + 1}.</span>
+              {formData.steps.map((step, index) => (
+                <div key={index} className="flex gap-2">
+                  <span className="py-2 text-sm text-neutral-500 w-6 text-right">
+                    {index + 1}.
+                  </span>
                   <textarea
                     rows={2}
-                    placeholder={`Popis ${idx + 1}. kroku...`}
+                    placeholder="Popis kroku"
                     value={step.body}
-                    onChange={e => handleStepChange(idx, e.target.value)}
-                    className="flex-1 px-4 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none resize-y"
+                    onChange={e => updateStep(index, e.target.value)}
+                    className="flex-1 px-4 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeStep(idx)}
-                    disabled={formData.steps.length <= 1}
-                    className="p-2 rounded-lg text-neutral-500 hover:text-red-400 transition disabled:opacity-30 mt-1"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {formData.steps.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeStep(index)}
+                      className="p-2 text-neutral-500 hover:text-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -418,82 +388,108 @@ export const AdminRecipes: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-              Poznámky / Tipy (volitelné)
+              Poznámky / tipy na závěr
             </label>
             <textarea
               rows={2}
               value={formData.notes || ''}
               onChange={e => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none resize-y"
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-neutral-800">
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm transition"
-            >
-              Zrušit
-            </button>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-semibold transition-colors"
+              >
+                Zrušit
+              </button>
+            )}
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold text-sm transition disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              {saving ? 'Ukládám...' : 'Uložit recept'}
+              <Check size={18} />
+              {saving ? 'Ukládám...' : isEditing ? 'Uložit změny' : 'Přidat recept'}
             </button>
           </div>
         </form>
-      )}
+      </div>
 
-      {loading ? (
-        <div className="p-8 text-center text-neutral-500 text-sm">Načítám recepty ze Supabase...</div>
-      ) : recipes.length === 0 ? (
-        <div className="p-8 text-center bg-neutral-900 border border-neutral-800 rounded-2xl text-neutral-400 text-sm">
-          V databázi zatím nejsou žádné recepty.
+      {/* Seznam existujících receptů */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-white">Všechny recepty ({recipes.length})</h3>
+          <button
+            onClick={fetchRecipes}
+            className="text-xs text-neutral-400 hover:text-white flex items-center gap-1.5 transition-colors"
+          >
+            <RefreshCw size={14} /> Obnovit seznam
+          </button>
         </div>
-      ) : (
-        <div className="grid gap-4">
-          {recipes.map((recipe) => (
-            <div
-              key={recipe.slug}
-              className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col sm:flex-row justify-between items-start gap-4"
-            >
-              <div className="space-y-1.5 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white text-base">{recipe.title}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-mono">
-                    /{recipe.slug}
-                  </span>
+
+        {loading ? (
+          <p className="text-neutral-500 text-sm py-4">Načítám recepty...</p>
+        ) : errorMsg ? (
+          <p className="text-red-400 text-sm py-4">{errorMsg}</p>
+        ) : recipes.length === 0 ? (
+          <p className="text-neutral-500 text-sm py-4">Žádné recepty v databázi.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recipes.map(recipe => (
+              <div
+                key={recipe.slug}
+                className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="h-32 rounded-xl overflow-hidden mb-3 bg-neutral-950">
+                    <img
+                      src={recipe.image}
+                      alt={recipe.imageAlt}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <h4 className="font-bold text-white text-base mb-1">{recipe.title}</h4>
+                  <p className="text-xs text-neutral-400 line-clamp-2 mb-3">
+                    {recipe.shortDescription}
+                  </p>
                 </div>
-                <p className="text-sm text-neutral-400">{recipe.shortDescription}</p>
-                <div className="flex items-center gap-4 text-xs text-neutral-500 pt-1">
-                  <span>Suroviny: {recipe.ingredients?.length || 0}</span>
-                  <span>Kroky: {recipe.steps?.length || 0}</span>
-                  {recipe.prepTime && <span>Čas: {recipe.prepTime}</span>}
+                <div className="flex items-center justify-between pt-3 border-t border-neutral-800 text-xs">
+                  <span className="text-neutral-500">{recipe.date}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(recipe)}
+                      className="p-1.5 text-neutral-400 hover:text-amber-400 rounded-lg hover:bg-neutral-800 transition-colors"
+                      title="Upravit"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(recipe.slug)}
+                      className="p-1.5 text-neutral-400 hover:text-red-400 rounded-lg hover:bg-neutral-800 transition-colors"
+                      title="Smazat"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-center">
-                <button
-                  onClick={() => handleEdit(recipe)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition"
-                >
-                  <Edit3 className="w-3.5 h-3.5" /> Upravit
-                </button>
-                <button
-                  onClick={() => handleDelete(recipe.slug)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium border border-red-500/20 transition"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Smazat
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Vyskakovací okno pro výběr obrázku */}
+      <ImageSelectorModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        onSelect={selectedPath => setFormData(prev => ({ ...prev, image: selectedPath }))}
+        folder="recipes"
+      />
     </div>
   );
 };
