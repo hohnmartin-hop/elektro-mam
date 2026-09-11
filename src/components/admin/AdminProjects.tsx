@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { Project, ProjectCategory, Component, ProjectStep } from '../../types';
-import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers } from 'lucide-react';
-
+import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image } from 'lucide-react';
+import { ImageSelectorModal } from './ImageSelectorModal';
 const CATEGORIES: ProjectCategory[] = [
   'ESP32',
   'Arduino',
@@ -20,6 +20,7 @@ export const AdminProjects: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const initialFormState: Project = {
     slug: '',
@@ -299,14 +300,24 @@ export const AdminProjects: React.FC = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                URL hlavního obrázku
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                  URL hlavního obrázku
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-medium transition-colors"
+                >
+                  <Image size={14} />
+                  Vybrat z nahraných fotek
+                </button>
+              </div>
               <input
                 type="text"
                 value={formData.image}
                 onChange={e => setFormData({ ...formData, image: e.target.value })}
-                placeholder="https://images.pexels.com/..."
+                placeholder="/projects/nazev-fotky.jpg"
                 className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:outline-none focus:border-sky-500"
               />
             </div>
@@ -570,6 +581,13 @@ export const AdminProjects: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <ImageSelectorModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        onSelect={selectedPath => setFormData(prev => ({ ...prev, image: selectedPath }))}
+        folder="projects"
+      />
     </div>
   );
 };
