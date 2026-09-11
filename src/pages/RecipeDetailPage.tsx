@@ -157,13 +157,15 @@ export function RecipeDetailPage() {
           </div>
 
           {/* Intro */}
-          <section className="mt-8 rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
-            <div className="mb-3 flex items-center gap-2">
-              <ChefHat className="h-5 w-5 text-circuit-amber" aria-hidden />
-              <h2 className="text-xl font-semibold text-white">Úvod</h2>
-            </div>
-            <p className="text-ink-100 leading-relaxed">{recipe.intro}</p>
-          </section>
+          {recipe.intro && (
+            <section className="mt-8 rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6">
+              <div className="mb-3 flex items-center gap-2">
+                <ChefHat className="h-5 w-5 text-circuit-amber" aria-hidden />
+                <h2 className="text-xl font-semibold text-white">Úvod</h2>
+              </div>
+              <p className="text-ink-100 leading-relaxed">{recipe.intro}</p>
+            </section>
+          )}
 
           {/* Content grid */}
           <div className="mt-8 grid gap-8 lg:grid-cols-3">
@@ -210,6 +212,20 @@ export function RecipeDetailPage() {
                 <h2 className="text-xl font-semibold text-white">Poznámky</h2>
               </div>
               <p className="text-ink-100 leading-relaxed">{recipe.notes}</p>
+            </section>
+          )}
+
+          {/* Description - vycentrováno samostatně na střed přes plnou šířku (stejně jako u projektů) */}
+          {recipe.description && (
+            <section className="mx-auto mt-12 max-w-4xl rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 sm:p-8">
+              <div className="mb-6 flex items-center justify-center gap-2 border-b border-ink-500/40 pb-4">
+                <ChefHat className="h-6 w-6 text-circuit-amber" aria-hidden />
+                <h2 className="text-2xl font-semibold text-white">Podrobný popis</h2>
+              </div>
+              <div
+                className="text-ink-100 leading-relaxed space-y-4 text-left [&>img]:rounded-xl [&>img]:max-h-96 [&>img]:mx-auto [&>img]:my-6 [&>img]:border [&>img]:border-ink-500/40"
+                dangerouslySetInnerHTML={{ __html: recipe.description }}
+              />
             </section>
           )}
         </div>

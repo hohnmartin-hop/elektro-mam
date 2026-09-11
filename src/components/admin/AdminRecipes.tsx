@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { Recipe, RecipeIngredient, RecipeStep } from '../../types';
-import { Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw, Image } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw, Image, FileText } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';
+import { parseProjectDocx } from '../../utils/docxParser';
 
 export const AdminRecipes: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -11,6 +12,7 @@ export const AdminRecipes: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isImportingDocx, setIsImportingDocx] = useState(false);
 
   const initialFormState: Recipe = {
     slug: '',
@@ -20,6 +22,7 @@ export const AdminRecipes: React.FC = () => {
     imageAlt: '',
     date: new Date().toISOString().split('T')[0],
     intro: '',
+    description: '',
     ingredients: [{ name: '', amount: '' }],
     steps: [{ body: '' }],
     notes: '',
@@ -54,8 +57,37 @@ export const AdminRecipes: React.FC = () => {
     fetchRecipes();
   }, []);
 
+  const handleDocxImport = async (file: File) => {
+    if (!file.name.endsWith('.docx')) {
+      alert('Vyber prosím soubor typu Word (.docx).');
+      return;
+    }
+
+    setIsImportingDocx(true);
+    try {
+      const parsed = await parseProjectDocx(file);
+      setFormData(prev => ({
+        ...prev,
+        title: parsed.title || prev.title,
+        slug: parsed.slug || prev.slug,
+        shortDescription: parsed.shortDescription || prev.shortDescription,
+        description: parsed.description || prev.description,
+        image: parsed.imageBase64 || prev.image,
+        imageAlt: parsed.title || prev.imageAlt,
+      }));
+    } catch (err: any) {
+      alert('Chyba při zpracování Word souboru: ' + err.message);
+    } finally {
+      setIsImportingDocx(false);
+    }
+  };
+
   const handleEdit = (recipe: Recipe) => {
-    setFormData(recipe);
+    setFormData({
+      ...initialFormState,
+      ...recipe,
+      description: recipe.description || '',
+    });
     setIsEditing(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -167,6 +199,34 @@ export const AdminRecipes: React.FC = () => {
               <X size={16} /> Zrušit úpravy
             </button>
           )}
+        </div>
+
+        {/* Rychlý import z Wordu (.docx) */}
+        <div className="mb-6 p-5 rounded-2xl bg-neutral-950 border-2 border-dashed border-neutral-800 hover:border-amber-500/60 transition-colors text-center">
+          <input
+            type="file"
+            id="recipe-docx-upload"
+            accept=".docx"
+            className="hidden"
+            disabled={isImportingDocx}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleDocxImport(file);
+              e.target.value = '';
+            }}
+          />
+          <label
+            htmlFor="recipe-docx-upload"
+            className="cursor-pointer flex flex-col items-center justify-center gap-2 text-neutral-300 hover:text-white"
+          >
+            <FileText className="w-8 h-8 text-amber-500" />
+            <span className="font-semibold text-sm text-amber-400">
+              {isImportingDocx ? '⏳ Načítám data z Wordu...' : '📄 Klikni zde pro načtení receptu z Wordu (.docx)'}
+            </span>
+            <span className="text-xs text-neutral-500">
+              Automaticky předvyplní název, slug, popis a vloží formátovaný text s fotkami
+            </span>
+          </label>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -297,6 +357,20 @@ export const AdminRecipes: React.FC = () => {
               value={formData.intro || ''}
               onChange={e => setFormData({ ...formData, intro: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none"
+            />
+          </div>
+
+          {/* Podrobný popis / HTML z Wordu */}
+          <div>
+            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+              Podrobný popis / obsah z Wordu (HTML)
+            </label>
+            <textarea
+              rows={6}
+              value={formData.description || ''}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Obsah se automaticky vyplní po načtení souboru .docx nebo ho sem můžeš vložit ručně..."
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:border-amber-500 outline-none font-mono text-xs"
             />
           </div>
 

@@ -55,6 +55,7 @@ export interface Recipe {
   imageAlt: string;
   date: string;
   intro: string;
+  description?: string;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
   notes?: string;
