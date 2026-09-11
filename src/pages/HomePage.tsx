@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Cpu, CircuitBoard, Wrench, Printer, Zap } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 import { ProjectCard } from '@/components/ProjectCard';
-import { projects } from '@/data/projects';
+import { projects as localProjects } from '@/data/projects';
+import { supabase } from '@/supabase';
+import { Project } from '@/types';
 
 const infoBlocks = [
   {
@@ -31,11 +34,51 @@ const infoBlocks = [
   },
 ];
 
-const featuredProjects = [...projects]
-  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  .slice(0, 3);
-
 export function HomePage() {
+  const [allProjects, setAllProjects] = useState<Project[]>(localProjects);
+  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('date', { ascending: false });
+
+        const sourceList: Project[] = (error || !data || data.length === 0)
+          ? localProjects
+          : (data as Project[]);
+
+        setAllProjects(sourceList);
+
+        // 1. Vybereme projekty označené jako featured
+        const featured = sourceList.filter((p) => Boolean(p.featured));
+
+        // 2. Pokud jich je méně než 3, doplníme zbývající místa nejnovějšími ne-featured
+        if (featured.length < 3) {
+          const nonFeatured = sourceList.filter((p) => !p.featured);
+          const combined = [...featured, ...nonFeatured].slice(0, 3);
+          setFeaturedProjects(combined);
+        } else {
+          setFeaturedProjects(featured.slice(0, 3));
+        }
+      } catch (err) {
+        console.error('Chyba při načítání projektů pro homepage:', err);
+        // Fallback na lokální data
+        const localFeatured = localProjects.filter((p) => Boolean(p.featured));
+        if (localFeatured.length < 3) {
+          const localNonFeatured = localProjects.filter((p) => !p.featured);
+          setFeaturedProjects([...localFeatured, ...localNonFeatured].slice(0, 3));
+        } else {
+          setFeaturedProjects(localFeatured.slice(0, 3));
+        }
+      }
+    }
+
+    loadProjects();
+  }, []);
+
   return (
     <>
       <Seo
@@ -78,7 +121,7 @@ export function HomePage() {
             {/* Stats */}
             <div className="animate-fade-in-up mt-12 flex flex-wrap gap-8">
               <div>
-                <div className="font-mono text-2xl font-bold text-accent-400">{projects.length}</div>
+                <div className="font-mono text-2xl font-bold text-accent-400">{allProjects.length}</div>
                 <div className="text-xs text-ink-300">Projektů</div>
               </div>
               <div className="h-10 w-px bg-ink-500" />
@@ -140,7 +183,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* LATEST PROJECTS */}
+      {/* LATEST / FEATURED PROJECTS */}
       <section className="mx-auto max-w-content px-4 py-16 sm:px-6 lg:px-8">
         <div className="mb-10 flex items-end justify-between">
           <div>
