@@ -122,4 +122,76 @@ export const recipes: Recipe[] = [
     servings: '1 porce',
     prepTime: '15 minut',
   },
+    {
+    "slug": "fararska-polevka-zeleninova-s-vajecnymi-nocky",
+    "title": "Farářská polévka / zeleninová s vaječnými nočky",
+    "shortDescription": "Suroviny...",
+    "image": "/recipes/fararska-polevka-1.jpeg",
+    "imageAlt": "Farářská polévka / zeleninová s vaječnými nočky",
+    "date": "2026-09-14",
+    "intro": "Suroviny...",
+    "ingredients": [
+      {
+        "name": "220 g míchané čerstvé zeleniny",
+        "amount": ""
+      },
+      {
+        "name": "1 lžíce másla",
+        "amount": ""
+      },
+      {
+        "name": "1 l vývaru",
+        "amount": ""
+      },
+      {
+        "name": "sůl",
+        "amount": ""
+      },
+      {
+        "name": "pepř mletý",
+        "amount": ""
+      },
+      {
+        "name": "zeleninová nať (petrželová, celerová)",
+        "amount": ""
+      },
+      {
+        "name": "česnek (možno vynechat)",
+        "amount": ""
+      },
+      {
+        "name": "Na nočky:",
+        "amount": ""
+      },
+      {
+        "name": "35 g másla",
+        "amount": ""
+      },
+      {
+        "name": "30 g hladké mouky",
+        "amount": ""
+      },
+      {
+        "name": "2 menší vejce",
+        "amount": ""
+      },
+      {
+        "name": "sůl",
+        "amount": ""
+      },
+      {
+        "name": "koření podle chuti",
+        "amount": ""
+      }
+    ],
+    "steps": [
+      {
+        "body": "Postup přípravyNa másle osmažíme směs očištěné a na kousky pokrájené zeleniny. Výběr je na naší chuti, od kořenové zeleniny, přes kousek brokolice či květáku, pórek, kapustičky, řapíkatý celer atp.Po osmažení zeleniny přilijeme vývar, podle chuti osolíme, opepříme a přivedeme k varu. Kdo chce, může přidat i jemně nasekaný česnek.Během smažení zeleniny připravíme nočky. Na rozpuštěném másle osmažíme mouku lehce dorůžova, do ní podle chuti můžeme přidat jemně drcený kmín, pepř, papriku, bylinky... Do osmažené jíšky vmícháme vajíčka, osolíme a na zdroji tepla necháme srazit na menší nočky. Pokud máme nočky velké, nevadí, snadno je přepůlíme nebo rozčtvrtíme lžící."
+      }
+    ],
+    "notes": "",
+    "servings": "",
+    "prepTime": ""
+  },
+
 ];
