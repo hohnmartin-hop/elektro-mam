@@ -71,7 +71,7 @@ export const AdminRecipes: React.FC = () => {
         title: parsed.title || prev.title,
         slug: parsed.slug || prev.slug,
         shortDescription: parsed.shortDescription || prev.shortDescription,
-        description: parsed.description || prev.description,
+        description: "",
         image: parsed.imageBase64 || prev.image,
         imageAlt: parsed.title || prev.imageAlt,
         ingredients: parsed.ingredients && parsed.ingredients.length > 0 ? parsed.ingredients : prev.ingredients,
