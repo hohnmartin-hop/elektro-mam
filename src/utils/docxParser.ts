@@ -20,24 +20,24 @@ export interface ParsedRecipeDocxResult {
   steps: RecipeStep[];
 }
 
-function slugify(text: string): string {
+function stripDiacritics(text: string): string {
   return text
-    .toString()
-    .toLowerCase()
-    .trim()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function slugify(text: string): string {
+  return stripDiacritics(text)
     .replace(/\s+/g, '-')
     .replace(/[^\w\-]+/g, '')
     .replace(/\-\-+/g, '-');
 }
 
-// Pomocná funkce pro oddělení množství a názvu suroviny
 function parseIngredientLine(line: string): RecipeIngredient {
   const cleanLine = line.trim();
-  
   const amountRegex = /^([\d\s,./\-\–]+(?:\s*(?:g|kg|dkg|ml|l|litr|litru|litry|lžíce|lžička|lžičky|lžic|stroužek|stroužky|stroužků|nožička|nožičky|nožiček|ks|kus|kusy|kusů|střední|větší|menší|balení|špetka|hrnek|hrnky|hrnků)(?:\s*\([^)]+\))?)?)(.*)$/i;
-
   const match = cleanLine.match(amountRegex);
 
   if (match && match[1] && match[2].trim()) {
@@ -56,7 +56,6 @@ function parseIngredientLine(line: string): RecipeIngredient {
 export async function parseRecipeDocx(file: File): Promise<ParsedRecipeDocxResult> {
   const arrayBuffer = await file.arrayBuffer();
 
-  // 1. Získání čistého textu
   const rawTextResult = await mammoth.extractRawText({ arrayBuffer });
   const rawLines = (rawTextResult.value || '')
     .split('\n')
@@ -67,25 +66,23 @@ export async function parseRecipeDocx(file: File): Promise<ParsedRecipeDocxResul
   const title = rawLines.length > 0 ? rawLines[0] : fallbackName;
   const slug = slugify(title);
 
-  // 2. Parsování sekcí Suroviny a Postup přípravy
   const ingredients: RecipeIngredient[] = [];
   const steps: RecipeStep[] = [];
   let currentSection: 'none' | 'ingredients' | 'steps' = 'none';
 
   for (let i = 1; i < rawLines.length; i++) {
     const line = rawLines[i];
-    const normalized = line.toLowerCase().replace(/[:\-\–]/g, '').trim();
+    const normalizedHeader = stripDiacritics(line).replace(/[:\-\–\.]/g, '').trim();
 
-    if (normalized === 'suroviny' || normalized.startsWith('suroviny')) {
+    if (normalizedHeader === 'suroviny' || normalizedHeader.startsWith('suroviny')) {
       currentSection = 'ingredients';
       continue;
     }
 
     if (
-      normalized === 'postup' ||
-      normalized === 'postup pripravy' ||
-      normalized.startsWith('postup pripravy') ||
-      normalized.startsWith('priprava')
+      normalizedHeader === 'postup' ||
+      normalizedHeader.startsWith('postup') ||
+      normalizedHeader.startsWith('priprava')
     ) {
       currentSection = 'steps';
       continue;
@@ -97,38 +94,20 @@ export async function parseRecipeDocx(file: File): Promise<ParsedRecipeDocxResul
         ingredients.push(parsedIngredient);
       }
     } else if (currentSection === 'steps') {
-      const cleanStep = line.replace(/^(\d+[\.\)]|\b(?:krok|za\s+[a-zčšřžýáíéůú]+)\s*[:\-\.]?)\s*/i, '').trim();
+      const cleanStep = line
+        .replace(/^(\d+[\.\)]|\b(?:za\s+[a-zčšřžýáíéůú]+|krok\s*\d*)\s*[:\-\.,]?)\s*/i, '')
+        .trim();
+
       if (cleanStep) {
         steps.push({ body: cleanStep });
       }
     }
   }
 
-  // 3. Krátký popis
   const shortDescription = steps.length > 0
     ? steps[0].body.slice(0, 150) + (steps[0].body.length > 150 ? '...' : '')
     : title;
 
-  // 4. Převod do HTML
-  const mammothAny = mammoth as any;
-  const convertImageOption = mammothAny.images?.imgElement
-    ? mammothAny.images.imgElement((element: any) => {
-        return element.read('base64').then((imageBuffer: any) => {
-          return {
-            src: `data:${element.contentType};base64,${imageBuffer}`,
-          };
-        });
-      })
-    : undefined;
-
-  const htmlResult = await mammoth.convertToHtml(
-    { arrayBuffer },
-    convertImageOption ? { convertImage: convertImageOption } : undefined
-  );
-
-  const description = htmlResult.value || '';
-
-  // 5. Extrakce náhledu fotky pomocí JSZip
   let imageBase64: string | null = null;
   try {
     const zip = await JSZip.loadAsync(arrayBuffer);
@@ -153,14 +132,14 @@ export async function parseRecipeDocx(file: File): Promise<ParsedRecipeDocxResul
       }
     }
   } catch (err) {
-    console.warn('Chyba při čtení náhledového obrázku z Wordu:', err);
+    console.warn('Chyba při čtení fotky z Wordu:', err);
   }
 
   return {
     title,
     slug,
     shortDescription,
-    description,
+    description: '',
     imageBase64,
     ingredients: ingredients.length > 0 ? ingredients : [{ name: '', amount: '' }],
     steps: steps.length > 0 ? steps : [{ body: '' }],
@@ -223,7 +202,7 @@ export async function parseProjectDocx(file: File): Promise<ParsedDocxResult> {
       }
     }
   } catch (err) {
-    console.warn('Chyba při čtení náhledového obrázku:', err);
+    console.warn('Chyba při čtení fotky:', err);
   }
 
   return {
