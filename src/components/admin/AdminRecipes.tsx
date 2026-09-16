@@ -3,7 +3,7 @@ import { supabase } from '../../supabase';
 import { Recipe, RecipeIngredient, RecipeStep } from '../../types';
 import { Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw, Image, FileText } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';
-import { parseProjectDocx } from '../../utils/docxParser';
+import { parseRecipeDocx } from '../../utils/docxParser';
 
 export const AdminRecipes: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -65,7 +65,7 @@ export const AdminRecipes: React.FC = () => {
 
     setIsImportingDocx(true);
     try {
-      const parsed = await parseProjectDocx(file);
+      const parsed = await parseRecipeDocx(file);
       setFormData(prev => ({
         ...prev,
         title: parsed.title || prev.title,
@@ -74,6 +74,8 @@ export const AdminRecipes: React.FC = () => {
         description: parsed.description || prev.description,
         image: parsed.imageBase64 || prev.image,
         imageAlt: parsed.title || prev.imageAlt,
+        ingredients: parsed.ingredients && parsed.ingredients.length > 0 ? parsed.ingredients : prev.ingredients,
+        steps: parsed.steps && parsed.steps.length > 0 ? parsed.steps : prev.steps,
       }));
     } catch (err: any) {
       alert('Chyba při zpracování Word souboru: ' + err.message);
