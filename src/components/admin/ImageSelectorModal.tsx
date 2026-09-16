@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
-import { Upload, Loader2, RefreshCw } from 'lucide-react';
+import { Upload, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 
 interface ImageSelectorModalProps {
   isOpen: boolean;
@@ -27,6 +27,7 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({
   const [remoteImages, setRemoteImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   // 1. Načtení fotek ze Supabase Storage bucketu "images"
@@ -70,7 +71,6 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Bezpečný název souboru bez diakritiky a mezer
     const sanitizedName = file.name
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -95,12 +95,10 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({
         throw uploadError;
       }
 
-      // Získání veřejné URL adresy
       const { data: urlData } = supabase.storage
         .from('images')
         .getPublicUrl(filePath);
 
-      // Obnovíme seznam a fotku rovnou vybereme
       await fetchStorageImages();
       onSelect(urlData.publicUrl);
       onClose();
@@ -108,15 +106,46 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({
       setErrorMsg('Nahrávání selhalo: ' + (err.message || 'Neznámá chyba'));
     } finally {
       setUploading(false);
-      // Reset inputu, aby šel stejný soubor nahrát znovu v případě potřeby
       e.target.value = '';
+    }
+  };
+
+  // 3. Smazání fotky ze Supabase Storage
+  const handleDeleteImage = async (imgSrc: string, e: React.MouseEvent) => {
+    // Zabrání vybrání fotky a zavření modálu
+    e.stopPropagation();
+
+    const fileName = imgSrc.split('/').pop();
+    if (!fileName) return;
+
+    const confirmDelete = window.confirm(`Opravdu chceš trvale smazat fotku "${fileName}" ze serveru?`);
+    if (!confirmDelete) return;
+
+    const filePath = `${folder}/${fileName}`;
+    setDeletingPath(imgSrc);
+    setErrorMsg('');
+
+    try {
+      const { error } = await supabase.storage
+        .from('images')
+        .remove([filePath]);
+
+      if (error) {
+        throw error;
+      }
+
+      // Aktualizujeme seznam vyřazením smazaného obrázku
+      setRemoteImages(prev => prev.filter(url => url !== imgSrc));
+    } catch (err: any) {
+      setErrorMsg('Smazání selhalo: ' + (err.message || 'Neznámá chyba'));
+    } finally {
+      setDeletingPath(null);
     }
   };
 
   if (!isOpen) return null;
 
   const localImages = folder === 'recipes' ? localRecipeImages : localProjectImages;
-  // Sloučíme vzdálené fotky ze Supabase a lokální fotky z repozitáře
   const allImages = [...remoteImages, ...localImages];
 
   return (
@@ -191,29 +220,55 @@ export const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {allImages.map(imgSrc => (
-                <button
-                  key={imgSrc}
-                  type="button"
-                  onClick={() => {
-                    onSelect(imgSrc);
-                    onClose();
-                  }}
-                  className="group flex flex-col text-left p-2 rounded-xl bg-neutral-950 border border-neutral-800 hover:border-amber-500 transition-colors focus:outline-none"
-                >
-                  <div className="w-full h-28 bg-neutral-900 rounded-lg overflow-hidden mb-2">
-                    <img
-                      src={imgSrc}
-                      alt="Náhled"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      loading="lazy"
-                    />
+              {allImages.map(imgSrc => {
+                const isRemote = remoteImages.includes(imgSrc);
+                const isDeleting = deletingPath === imgSrc;
+
+                return (
+                  <div
+                    key={imgSrc}
+                    className="relative group p-2 rounded-xl bg-neutral-950 border border-neutral-800 hover:border-amber-500/60 transition-colors flex flex-col cursor-pointer"
+                    onClick={() => {
+                      onSelect(imgSrc);
+                      onClose();
+                    }}
+                  >
+                    {/* Tlačítko koše – pouze pro fotky nahrané v cloudu Supabase */}
+                    {isRemote && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteImage(imgSrc, e)}
+                        disabled={isDeleting}
+                        title="Smazat tuto fotku ze serveru"
+                        className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-neutral-900/90 border border-neutral-700 text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all opacity-80 group-hover:opacity-100"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+
+                    <div className="w-full h-28 bg-neutral-900 rounded-lg overflow-hidden mb-2">
+                      <img
+                        src={imgSrc}
+                        alt="Náhled"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        loading="lazy"
+                      />
+                    </div>
+                    <span className="text-xs text-neutral-300 truncate w-full" title={imgSrc}>
+                      {imgSrc.split('/').pop()}
+                    </span>
+                    {isRemote && (
+                      <span className="text-[10px] text-amber-500/80 font-mono mt-0.5">
+                        cloud
+                      </span>
+                    )}
                   </div>
-                  <span className="text-xs text-neutral-300 truncate w-full" title={imgSrc}>
-                    {imgSrc.split('/').pop()}
-                  </span>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
