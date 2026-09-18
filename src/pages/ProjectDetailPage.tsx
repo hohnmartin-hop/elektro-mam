@@ -266,13 +266,13 @@ export function ProjectDetailPage() {
 
         {/* Description - vycentrováno samostatně na střed přes plnou šířku */}
         {project.description && (
-          <section className="mx-auto mt-12 max-w-4xl rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 sm:p-8">
+          <section className="mx-auto mt-12 max-w-4xl rounded-2xl border border-ink-500/60 bg-ink-700/30 p-6 sm:p-8 overflow-hidden">
             <div className="mb-6 flex items-center justify-center gap-2 border-b border-ink-500/40 pb-4">
               <Cpu className="h-6 w-6 text-accent-400" aria-hidden />
               <h2 className="text-2xl font-semibold text-white">Popis</h2>
             </div>
             <div 
-              className="text-ink-100 leading-relaxed space-y-4 text-left [&>img]:rounded-xl [&>img]:max-h-96 [&>img]:mx-auto [&>img]:my-6 [&>img]:border [&>img]:border-ink-500/40"
+              className="text-ink-100 leading-relaxed space-y-4 text-left break-words [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl [&_img]:border [&_img]:border-ink-500/40 [&_img]:mx-auto [&_img]:my-6"
               dangerouslySetInnerHTML={{ __html: project.description }}
             />
           </section>

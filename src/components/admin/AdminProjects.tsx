@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { Project, ProjectCategory, Component, ProjectStep } from '../../types';
-import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image, FileText } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image, FileText, Eye } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';
 import { parseProjectDocx } from '../../utils/docxParser';
+
+// Import nového WYSIWYG editoru a jeho stylů
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 const CATEGORIES: ProjectCategory[] = [
   'ESP32',
@@ -16,6 +20,17 @@ const CATEGORIES: ProjectCategory[] = [
   'Ostatní'
 ];
 
+// Konfigurace tlačítek v editoru (co všechno můžeš používat)
+const quillModules = {
+  toolbar: [
+    [{ 'header': [2, 3, false] }], // Nadpisy (H2, H3, Normální text)
+    ['bold', 'italic', 'underline'], // Tučné, kurzíva, podtržené
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }], // Odrážky a číslování
+    ['link', 'image'], // Vložení odkazu a obrázku
+    ['clean'] // Tlačítko pro smazání formátování
+  ],
+};
+
 export const AdminProjects: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +39,7 @@ export const AdminProjects: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isImportingDocx, setIsImportingDocx] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const initialFormState: Project = {
     slug: '',
@@ -108,7 +124,6 @@ export const AdminProjects: React.FC = () => {
     }
   };
 
-  // Správa importu z Wordu (.docx)
   const handleDocxImport = async (file: File) => {
     if (!file.name.endsWith('.docx')) {
       alert('Vyber prosím soubor typu Word (.docx).');
@@ -125,7 +140,6 @@ export const AdminProjects: React.FC = () => {
         slug: parsed.slug,
         shortDescription: parsed.shortDescription,
         description: parsed.description,
-        // Pravidlo: Pokud fotka ještě není vybraná ručně a ve Wordu fotka je, použije se
         image: prev.image ? prev.image : (parsed.imageBase64 || prev.image),
         imageAlt: prev.imageAlt || parsed.title
       }));
@@ -137,7 +151,6 @@ export const AdminProjects: React.FC = () => {
     }
   };
 
-  // Správa součástek
   const handleComponentChange = (index: number, field: keyof Component, value: string) => {
     const updated = [...(formData.components || [])];
     updated[index] = { ...updated[index], [field]: value };
@@ -158,7 +171,6 @@ export const AdminProjects: React.FC = () => {
     });
   };
 
-  // Správa kroků postupu
   const handleStepChange = (index: number, field: keyof ProjectStep, value: string) => {
     const updated = [...(formData.steps || [])];
     updated[index] = { ...updated[index], [field]: value };
@@ -274,7 +286,6 @@ export const AdminProjects: React.FC = () => {
             </button>
           </div>
 
-          {/* Rychlý import z Wordu (.docx) */}
           <div className="p-5 rounded-2xl bg-neutral-950 border-2 border-dashed border-neutral-800 hover:border-sky-500/60 transition-colors text-center">
             <input
               type="file"
@@ -428,17 +439,20 @@ export const AdminProjects: React.FC = () => {
               />
             </div>
 
+            {/* NOVÝ TEXTOVÝ EDITOR PRO POPIS PROJEKTU */}
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
                 Kompletní popis projektu
               </label>
-              <textarea
-                rows={4}
-                value={formData.description}
-                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Podrobný popis fungování a zapojení..."
-                className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-white text-sm focus:outline-none focus:border-sky-500 resize-y"
-              />
+              <div className="bg-white rounded-xl overflow-hidden border border-neutral-800 text-black">
+                <ReactQuill 
+                  theme="snow"
+                  value={formData.description}
+                  onChange={(content) => setFormData({ ...formData, description: content })}
+                  modules={quillModules}
+                  className="min-h-[250px]"
+                />
+              </div>
             </div>
 
             <div className="md:col-span-2 flex items-center gap-2 pt-2">
@@ -455,7 +469,6 @@ export const AdminProjects: React.FC = () => {
             </div>
           </div>
 
-          {/* Seznam součástek */}
           <div className="space-y-4 pt-4 border-t border-neutral-800">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
@@ -508,7 +521,6 @@ export const AdminProjects: React.FC = () => {
             </div>
           </div>
 
-          {/* Kroky postupu */}
           <div className="space-y-4 pt-4 border-t border-neutral-800">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white uppercase tracking-wider">
@@ -555,7 +567,6 @@ export const AdminProjects: React.FC = () => {
             </div>
           </div>
 
-          {/* Poznámky a kód */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-neutral-800">
             <div>
               <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
@@ -586,6 +597,14 @@ export const AdminProjects: React.FC = () => {
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
             <button
               type="button"
+              onClick={() => setIsPreviewOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-800 text-sky-400 hover:text-sky-300 hover:bg-neutral-700 transition text-sm font-medium"
+            >
+              <Eye className="w-4 h-4" />
+              Náhled
+            </button>
+            <button
+              type="button"
               onClick={() => setIsEditing(false)}
               className="px-5 py-2.5 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white transition text-sm font-medium"
             >
@@ -600,10 +619,69 @@ export const AdminProjects: React.FC = () => {
               {saving ? 'Ukládám...' : 'Uložit projekt'}
             </button>
           </div>
+
+          {isPreviewOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl my-auto text-left">
+                
+                <div className="flex items-center justify-between p-4 border-b border-neutral-800 shrink-0">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-sky-500" />
+                    Náhled projektu nanečisto
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(false)}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto space-y-8 bg-neutral-950">
+                  <div>
+                    <span className="px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 text-sm font-semibold mb-4 inline-block">
+                      {formData.category}
+                    </span>
+                    <h1 className="text-3xl font-bold text-white mb-4">{formData.title || 'Nepojmenovaný projekt'}</h1>
+                    <p className="text-lg text-neutral-300">{formData.shortDescription || 'Zde bude krátký popis...'}</p>
+                  </div>
+
+                  {formData.image && (
+                    <img
+                      src={formData.image}
+                      alt={formData.imageAlt}
+                      className="w-full max-h-[400px] object-cover rounded-xl border border-neutral-800"
+                    />
+                  )}
+
+                  {formData.description && (
+                    <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800">
+                      <h3 className="text-xl font-bold text-white mb-3">Popis a fungování</h3>
+                      <div 
+                        className="text-neutral-300 space-y-4" 
+                        dangerouslySetInnerHTML={{ __html: formData.description }} 
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4 border-t border-neutral-800 flex justify-end shrink-0 bg-neutral-900 rounded-b-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(false)}
+                    className="px-5 py-2.5 rounded-xl bg-sky-500 text-neutral-950 font-bold hover:bg-sky-400 transition"
+                  >
+                    Zpět do úprav
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          )}
         </form>
       )}
 
-      {/* Seznam projektů */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {projects.map(project => (
           <div
