@@ -37,8 +37,8 @@ function slugify(text: string): string {
 
 function parseIngredientLine(line: string): RecipeIngredient {
   const cleanLine = line.trim();
-  const amountRegex = /^([\d\s,./\-\–]+(?:\s*(?:g|kg|dkg|ml|l|litr|litru|litry|lžíce|lžička|lžičky|lžic|stroužek|stroužky|stroužků|nožička|nožičky|nožiček|ks|kus|kusy|kusů|střední|větší|menší|balení|špetka|hrnek|hrnky|hrnků)(?:\s*\([^)]+\))?)?)(.*)$/i;
-  const match = cleanLine.match(amountRegex);
+  const amountRegex = /^([\d\s,./\-\–]+(?:\s*(?:stroužků|stroužky|stroužek|nožiček|nožičky|nožička|střední|lžičky|lžička|balení|špetka|větší|menší|litru|litry|lžíce|hrnků|hrnky|hrnek|kusů|kusy|litr|lžic|dkg|kus|kg|ml|ks|g|l)(?=\s|\(|$)(?:\s*\([^)]+\))?)?)(.*)$/i;
+    const match = cleanLine.match(amountRegex);
 
   if (match && match[1] && match[2].trim()) {
     return {
