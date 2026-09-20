@@ -20,14 +20,14 @@ const CATEGORIES: ProjectCategory[] = [
   'Ostatní'
 ];
 
-// Konfigurace tlačítek v editoru (co všechno můžeš používat)
+// Konfigurace tlačítek v editoru
 const quillModules = {
   toolbar: [
-    [{ 'header': [2, 3, false] }], // Nadpisy (H2, H3, Normální text)
-    ['bold', 'italic', 'underline'], // Tučné, kurzíva, podtržené
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }], // Odrážky a číslování
-    ['link', 'image'], // Vložení odkazu a obrázku
-    ['clean'] // Tlačítko pro smazání formátování
+    [{ 'header': [2, 3, false] }],
+    ['bold', 'italic', 'underline'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['link', 'image'],
+    ['clean']
   ],
 };
 
@@ -221,14 +221,18 @@ export const AdminProjects: React.FC = () => {
     try {
       const { error } = await supabase
         .from('projects')
-        .upsert(payload);
+        .upsert(payload, { onConflict: 'slug' });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Chyba Supabase:', error);
+        throw error;
+      }
 
+      alert('Projekt byl úspěšně uložen!');
       setIsEditing(false);
       fetchProjects();
     } catch (err: any) {
-      alert('Chyba při ukládání: ' + err.message);
+      alert('Chyba při ukládání: ' + (err.message || JSON.stringify(err)));
     } finally {
       setSaving(false);
     }
@@ -439,7 +443,6 @@ export const AdminProjects: React.FC = () => {
               />
             </div>
 
-            {/* NOVÝ TEXTOVÝ EDITOR PRO POPIS PROJEKTU */}
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
                 Kompletní popis projektu
