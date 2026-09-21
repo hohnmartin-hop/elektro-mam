@@ -1,266 +1,416 @@
-import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, Search } from 'lucide-react';
-import { Logo } from '@/components/Logo';
-import { projects } from '@/data/projects';
-import { recipes } from '@/data/recipes';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Menu,
+  X,
+  Search,
+  Wrench,
+  BookOpen,
+  Mail,
+  User,
+  MessageSquareHeart,
+  Loader2,
+  FileText,
+  UtensilsCrossed,
+} from 'lucide-react';
+import { Logo } from './Logo';
+import { supabase } from '@/lib/supabase';
+import { projects as localProjects } from '@/data/projects';
+import { recipes as localRecipes } from '@/data/recipes';
 
-const navItems = [
-  { to: '/', label: 'Úvod' },
-  { to: '/projekty', label: 'Projekty' },
-  { to: '/recepty', label: 'Recepty' },
-  { to: '/kniha-prani', label: 'Kniha přání a stížností' },
-  { to: '/o-mne', label: 'O mně' },
-  { to: '/kontakt', label: 'Kontakt' },
-];
-
-interface SearchResult {
-  title: string;
+interface SearchResultItem {
+  id: string;
   slug: string;
-  type: 'Projekt' | 'Recept';
+  title: string;
+  description: string;
+  type: 'project' | 'recipe';
   url: string;
-  snippet: string;
+  category?: string;
 }
 
 export function Navbar() {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [showResults, setShowResults] = useState(false);
-
-  const searchRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
   const navigate = useNavigate();
 
+  // Zavřít mobilní menu při změně stránky
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [open]);
+    setIsOpen(false);
+    setSearchOpen(false);
+  }, [location.pathname]);
 
-  // Vyhledávací logika v projektech i receptech
+  // Klávesová zkratka Ctrl+K / Cmd+K pro otevření vyhledávání
   useEffect(() => {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) {
-      setResults([]);
-      setShowResults(false);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setSearchOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Autofokus na vstup po otevření modalu
+  useEffect(() => {
+    if (searchOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    } else {
+      setSearchQuery('');
+      setSearchResults([]);
+    }
+  }, [searchOpen]);
+
+  // Logika vyhledávání: Supabase + Fallback lokálních dat bez duplicit
+  useEffect(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    const matchedProjects: SearchResult[] = projects
-      .filter((p) => {
-        const titleMatch = p.title.toLowerCase().includes(q);
-        const shortMatch = p.shortDescription?.toLowerCase().includes(q);
-        const descMatch = p.description?.toLowerCase().includes(q);
-        return titleMatch || shortMatch || descMatch;
-      })
-      .map((p) => ({
-        title: p.title,
-        slug: p.slug,
-        type: 'Projekt',
-        url: `/projekty/${p.slug}`,
-        snippet: p.shortDescription || '',
-      }));
+    let isMounted = true;
+    setIsSearching(true);
 
-    const matchedRecipes: SearchResult[] = recipes
-      .filter((r) => {
-        const titleMatch = r.title.toLowerCase().includes(q);
-        const shortMatch = r.shortDescription?.toLowerCase().includes(q);
-        const introMatch = r.intro?.toLowerCase().includes(q);
-        return titleMatch || shortMatch || introMatch;
-      })
-      .map((r) => ({
-        title: r.title,
-        slug: r.slug,
-        type: 'Recept',
-        url: `/recepty/${r.slug}`,
-        snippet: r.shortDescription || '',
-      }));
+    const performSearch = async () => {
+      try {
+        // 1. Paralelní dotaz do Supabase
+        const [projectsRes, recipesRes] = await Promise.allSettled([
+          supabase
+            .from('projects')
+            .select('slug, title, shortDescription, description, category')
+            .or(`title.ilike.%${query}%,shortDescription.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`),
+          supabase
+            .from('recipes')
+            .select('slug, title, shortDescription, description, intro')
+            .or(`title.ilike.%${query}%,shortDescription.ilike.%${query}%,description.ilike.%${query}%,intro.ilike.%${query}%`),
+        ]);
 
-    setResults([...matchedProjects, ...matchedRecipes]);
-    setShowResults(true);
-  }, [query]);
+        const remoteProjects =
+          projectsRes.status === 'fulfilled' && projectsRes.value.data
+            ? projectsRes.value.data
+            : [];
 
-  // Zavření našeptávače při kliknutí mimo vyhledávač
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowResults(false);
+        const remoteRecipes =
+          recipesRes.status === 'fulfilled' && recipesRes.value.data
+            ? recipesRes.value.data
+            : [];
+
+        // 2. Lokální data jako fallback pro vyhledávání
+        const filteredLocalProjects = localProjects.filter(
+          (p) =>
+            p.title.toLowerCase().includes(query) ||
+            p.shortDescription?.toLowerCase().includes(query) ||
+            p.description?.toLowerCase().includes(query) ||
+            p.category?.toLowerCase().includes(query)
+        );
+
+        const filteredLocalRecipes = localRecipes.filter(
+          (r) =>
+            r.title.toLowerCase().includes(query) ||
+            r.shortDescription?.toLowerCase().includes(query) ||
+            r.description?.toLowerCase().includes(query) ||
+            r.intro?.toLowerCase().includes(query)
+        );
+
+        // 3. Sjednocení projektů (Supabase má přednost před lokálními, deduplikace dle slug)
+        const projectsMap = new Map<string, SearchResultItem>();
+
+        filteredLocalProjects.forEach((p) => {
+          projectsMap.set(p.slug, {
+            id: `p-${p.slug}`,
+            slug: p.slug,
+            title: p.title,
+            description: p.shortDescription || p.description || '',
+            type: 'project',
+            url: `/projekty/${p.slug}`,
+            category: p.category,
+          });
+        });
+
+        remoteProjects.forEach((p: any) => {
+          projectsMap.set(p.slug, {
+            id: `p-${p.slug}`,
+            slug: p.slug,
+            title: p.title,
+            description: p.shortDescription || p.description || '',
+            type: 'project',
+            url: `/projekty/${p.slug}`,
+            category: p.category,
+          });
+        });
+
+        // 4. Sjednocení receptů (Supabase má přednost před lokálními, deduplikace dle slug)
+        const recipesMap = new Map<string, SearchResultItem>();
+
+        filteredLocalRecipes.forEach((r) => {
+          recipesMap.set(r.slug, {
+            id: `r-${r.slug}`,
+            slug: r.slug,
+            title: r.title,
+            description: r.shortDescription || r.description || r.intro || '',
+            type: 'recipe',
+            url: `/recepty/${r.slug}`,
+          });
+        });
+
+        remoteRecipes.forEach((r: any) => {
+          recipesMap.set(r.slug, {
+            id: `r-${r.slug}`,
+            slug: r.slug,
+            title: r.title,
+            description: r.shortDescription || r.description || r.intro || '',
+            type: 'recipe',
+            url: `/recepty/${r.slug}`,
+          });
+        });
+
+        if (isMounted) {
+          setSearchResults([
+            ...Array.from(projectsMap.values()),
+            ...Array.from(recipesMap.values()),
+          ]);
+        }
+      } catch (err) {
+        console.error('Chyba při vyhledávání v Supabase, použita lokální data:', err);
+        // Bezpečný fallback při totálním selhání spojení
+        if (isMounted) {
+          const fallbackProjects: SearchResultItem[] = localProjects
+            .filter((p) => p.title.toLowerCase().includes(query))
+            .map((p) => ({
+              id: `p-${p.slug}`,
+              slug: p.slug,
+              title: p.title,
+              description: p.shortDescription || '',
+              type: 'project',
+              url: `/projekty/${p.slug}`,
+              category: p.category,
+            }));
+
+          const fallbackRecipes: SearchResultItem[] = localRecipes
+            .filter((r) => r.title.toLowerCase().includes(query))
+            .map((r) => ({
+              id: `r-${r.slug}`,
+              slug: r.slug,
+              title: r.title,
+              description: r.shortDescription || '',
+              type: 'recipe',
+              url: `/recepty/${r.slug}`,
+            }));
+
+          setSearchResults([...fallbackProjects, ...fallbackRecipes]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsSearching(false);
+        }
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    };
+
+    const timer = setTimeout(performSearch, 200); // 200ms debounce
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
 
   const handleSelectResult = (url: string) => {
-    setShowResults(false);
-    setQuery('');
-    setOpen(false);
+    setSearchOpen(false);
     navigate(url);
   };
 
+  const navLinks = [
+    { to: '/projekty', label: 'Projekty', icon: Wrench },
+    { to: '/recepty', label: 'Recepty', icon: BookOpen },
+    { to: '/kniha-prani-a-stiznosti', label: 'Kniha přání a stížností', icon: MessageSquareHeart },
+    { to: '/o-mne', label: 'O mně', icon: User },
+    { to: '/kontakt', label: 'Kontakt', icon: Mail },
+  ];
+
   return (
-    <header className="no-print sticky top-0 z-50 border-b border-ink-500/40 bg-ink-900/80 backdrop-blur-lg">
-      <nav className="mx-auto flex max-w-content items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link to="/" onClick={() => setOpen(false)}>
-          <Logo />
-        </Link>
+    <>
+      <header className="sticky top-0 z-40 w-full border-b border-ink-500/40 bg-ink-900/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-content items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2">
+            <Logo />
+          </Link>
 
-        {/* Desktop menu a vyhledávání */}
-        <div className="hidden items-center gap-4 md:flex">
-          <ul className="flex items-center gap-1">
-            {navItems.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.to === '/'}
-                  className={({ isActive }) =>
-                    `relative rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'text-accent-400'
-                        : 'text-ink-100 hover:text-white'
-                    }`
-                  }
+          {/* Desktop navigace */}
+          <nav className="hidden md:flex md:items-center md:gap-1 lg:gap-2">
+            {navLinks.map(({ to, label, icon: Icon }) => {
+              const isActive = location.pathname === to;
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-accent-500/10 text-accent-400'
+                      : 'text-ink-100 hover:bg-ink-800/60 hover:text-white'
+                  }`}
                 >
-                  {({ isActive }) => (
-                    <>
-                      {item.label}
-                      {isActive && (
-                        <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-accent-500" />
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
 
-          {/* Vyhledávací pole desktop */}
-          <div ref={searchRef} className="relative">
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => query.trim().length >= 2 && setShowResults(true)}
-                placeholder="Hledat..."
-                className="w-44 rounded-lg border border-ink-500/50 bg-ink-800/80 py-1.5 pl-8 pr-3 text-xs text-white placeholder-ink-400 transition-all focus:w-60 focus:border-accent-400 focus:outline-none focus:ring-1 focus:ring-accent-400"
-              />
-              <Search className="absolute left-2.5 h-3.5 w-3.5 text-ink-400" />
-            </div>
+          {/* Tlačítka vpravo (Hledání + Mobilní menu) */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 rounded-xl border border-ink-500/40 bg-ink-800/40 px-3 py-2 text-xs text-ink-300 transition-colors hover:border-accent-500/40 hover:bg-ink-700/50 hover:text-white"
+              title="Hledat na webu (Ctrl+K)"
+            >
+              <Search className="h-4 w-4 text-accent-400" />
+              <span className="hidden sm:inline">Hledat...</span>
+              <kbd className="hidden sm:inline-block rounded bg-ink-700 px-1.5 py-0.5 font-mono text-[10px] text-ink-300">
+                Ctrl+K
+              </kbd>
+            </button>
 
-            {/* Okno s výsledky */}
-            {showResults && (
-              <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-lg border border-ink-500/50 bg-ink-800 p-2 shadow-2xl">
-                {results.length > 0 ? (
-                  <ul className="divide-y divide-ink-700/60">
-                    {results.map((res) => (
-                      <li key={`${res.type}-${res.slug}`}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectResult(res.url)}
-                          className="w-full rounded-md p-2 text-left transition-colors hover:bg-ink-700"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-white">{res.title}</span>
-                            <span className="rounded bg-ink-900 px-1.5 py-0.5 text-[10px] font-bold text-accent-400">
-                              {res.type}
-                            </span>
-                          </div>
-                          {res.snippet && (
-                            <p className="mt-0.5 line-clamp-1 text-xs text-ink-300">
-                              {res.snippet}
-                            </p>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="p-3 text-center text-xs text-ink-400">
-                    Žádné výsledky pro výraz „{query}“
-                  </div>
-                )}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsOpen((prev) => !prev)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-ink-500/40 bg-ink-800/40 text-ink-200 transition-colors hover:bg-ink-700 md:hidden"
+              aria-label="Přepnout menu"
+            >
+              {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
 
-        {/* Mobilní tlačítko */}
-        <button
-          type="button"
-          className="rounded-lg p-2 text-ink-100 transition-colors hover:bg-ink-700 md:hidden"
-          aria-label={open ? 'Zavřít menu' : 'Otevřít menu'}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </nav>
+        {/* Mobilní menu */}
+        {isOpen && (
+          <div className="border-b border-ink-500/40 bg-ink-900/95 px-4 py-4 md:hidden">
+            <nav className="flex flex-col gap-1">
+              {navLinks.map(({ to, label, icon: Icon }) => {
+                const isActive = location.pathname === to;
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-accent-500/15 text-accent-400 font-semibold'
+                        : 'text-ink-100 hover:bg-ink-800/60 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+      </header>
 
-      {/* Mobilní menu */}
-      {open && (
-        <div className="border-t border-ink-500/40 bg-ink-800 md:hidden">
-          <div className="px-4 pt-3">
-            <div className="relative flex items-center">
+      {/* Vyhledávací modal (Ctrl+K) */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-20 sm:pt-28 backdrop-blur-sm animate-fade-in">
+          <div
+            className="w-full max-w-xl rounded-2xl border border-ink-500/60 bg-[#0f141c] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Vstupní pole vyhledávače */}
+            <div className="relative flex items-center border-b border-ink-500/40 px-4">
+              <Search className="h-5 w-5 text-accent-400" />
               <input
+                ref={searchInputRef}
                 type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Hledat na webu..."
-                className="w-full rounded-lg border border-ink-500/50 bg-ink-900 py-2 pl-9 pr-3 text-sm text-white placeholder-ink-400 focus:border-accent-400 focus:outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Hledej v projektech a receptech..."
+                className="w-full bg-transparent px-3 py-4 text-sm text-white placeholder-ink-400 focus:outline-none"
               />
-              <Search className="absolute left-3 h-4 w-4 text-ink-400" />
+              {isSearching ? (
+                <Loader2 className="h-4 w-4 animate-spin text-accent-400" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  className="rounded px-1.5 py-0.5 text-xs text-ink-400 hover:bg-ink-800 hover:text-white"
+                >
+                  ESC
+                </button>
+              )}
             </div>
 
-            {query.trim().length >= 2 && (
-              <div className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-ink-500/40 bg-ink-900 p-2">
-                {results.length > 0 ? (
-                  <ul className="divide-y divide-ink-700/60">
-                    {results.map((res) => (
-                      <li key={`m-${res.type}-${res.slug}`}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectResult(res.url)}
-                          className="w-full p-2 text-left text-sm text-white hover:bg-ink-800"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span>{res.title}</span>
-                            <span className="text-[10px] text-accent-400">{res.type}</span>
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="p-2 text-center text-xs text-ink-400">Žádné výsledky</div>
-                )}
-              </div>
-            )}
+            {/* Seznam výsledků */}
+            <div className="max-h-80 overflow-y-auto p-2">
+              {searchQuery.trim() === '' ? (
+                <div className="py-8 text-center text-xs text-ink-400">
+                  Zadej název nebo klíčové slovo projektu či receptu.
+                </div>
+              ) : searchResults.length === 0 && !isSearching ? (
+                <div className="py-8 text-center text-xs text-ink-300">
+                  Nebylo nic nalezeno pro výraz „<span className="text-white font-medium">{searchQuery}</span>“.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {searchResults.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectResult(item.url)}
+                      className="group flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors hover:bg-ink-800/70"
+                    >
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-ink-500/30 bg-ink-800 text-accent-400 group-hover:border-accent-500/40">
+                        {item.type === 'project' ? (
+                          <FileText className="h-4 w-4" />
+                        ) : (
+                          <UtensilsCrossed className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-white group-hover:text-accent-400 truncate">
+                            {item.title}
+                          </span>
+                          <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-medium text-ink-300">
+                            {item.type === 'project' ? 'Projekt' : 'Recept'}
+                          </span>
+                          {item.category && (
+                            <span className="hidden sm:inline-block text-[10px] text-ink-400 truncate">
+                              • {item.category}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="mt-0.5 text-xs text-ink-300 line-clamp-1">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-
-          <ul className="mx-auto max-w-content space-y-1 px-4 py-4">
-            {navItems.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.to === '/'}
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    `block rounded-lg px-4 py-3 text-base font-medium transition-colors ${
-                      isActive
-                        ? 'bg-accent-500/10 text-accent-400'
-                        : 'text-ink-100 hover:bg-ink-700'
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+          {/* Kliknutí do pozadí zavře modal */}
+          <div
+            className="fixed inset-0 -z-10"
+            onClick={() => setSearchOpen(false)}
+          />
         </div>
       )}
-    </header>
+    </>
   );
 }
