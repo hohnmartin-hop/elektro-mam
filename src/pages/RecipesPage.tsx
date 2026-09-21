@@ -3,7 +3,7 @@ import { ChefHat } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 import { RecipeCard } from '@/components/RecipeCard';
 import { recipes as initialRecipes } from '@/data/recipes';
-import { supabase } from '@/supabase';
+import { supabase } from '@/lib/supabase';
 import type { Recipe } from '@/types';
 
 export function RecipesPage() {

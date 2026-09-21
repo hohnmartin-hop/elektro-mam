@@ -15,7 +15,7 @@ import {
 import { Seo } from '@/components/Seo';
 import { projects as localProjects } from '@/data/projects';
 import { ProjectComments } from '@/components/ProjectComments';
-import { supabase } from '../supabase';
+import { supabase } from '@/lib/supabase';
 import { Project } from '../types';
 
 const categoryColors: Record<string, string> = {

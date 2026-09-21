@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabase';
+import { supabase } from '@/lib/supabase';
 import { Recipe, RecipeIngredient, RecipeStep } from '../../types';
 import { Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw, Image, FileText } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';

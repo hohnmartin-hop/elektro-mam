@@ -3,7 +3,7 @@ import { FolderKanban } from 'lucide-react';
 import { Seo } from '@/components/Seo';
 import { ProjectCard } from '@/components/ProjectCard';
 import { projects as initialProjects, categories } from '@/data/projects';
-import { supabase } from '@/supabase';
+import { supabase } from '@/lib/supabase';
 import type { Project, ProjectCategory } from '@/types';
 
 type Filter = 'Vše' | ProjectCategory;

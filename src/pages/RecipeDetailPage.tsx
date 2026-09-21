@@ -13,7 +13,7 @@ import {
 import { Seo } from '@/components/Seo';
 import { recipes as localRecipes } from '@/data/recipes';
 import { RecipeComments } from '@/components/RecipeComments';
-import { supabase } from '../supabase';
+import { supabase } from '@/lib/supabase';
 import { Recipe } from '../types';
 
 export function RecipeDetailPage() {

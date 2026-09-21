@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabase';
+import { supabase } from '@/lib/supabase';
 import { Project, ProjectCategory, Component, ProjectStep } from '../../types';
 import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image, FileText, Eye } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';

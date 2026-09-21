@@ -4,7 +4,7 @@ import { ArrowRight, Cpu, CircuitBoard, Wrench, Printer, Zap } from 'lucide-reac
 import { Seo } from '@/components/Seo';
 import { ProjectCard } from '@/components/ProjectCard';
 import { projects as localProjects } from '@/data/projects';
-import { supabase } from '@/supabase';
+import { supabase } from '@/lib/supabase';
 import { Project } from '@/types';
 
 const infoBlocks = [

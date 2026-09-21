@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '@/lib/supabase';
 import { AdminRecipes } from '../components/admin/AdminRecipes';
 import { AdminProjects } from '../components/admin/AdminProjects';
 

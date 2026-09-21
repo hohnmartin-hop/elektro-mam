@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabase';
+import { supabase } from '@/lib/supabase';
 import { Upload, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 
 interface ImageSelectorModalProps {
