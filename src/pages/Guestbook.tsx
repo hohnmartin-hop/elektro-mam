@@ -101,7 +101,7 @@ export const Guestbook: React.FC = () => {
             <MessageSquare className="w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Kniha přání a ztížností
+            Kniha přání a stížností
           </h1>
           <p className="text-slate-400 text-sm sm:text-base">
             Máte nápad na zlepšení, líbí se vám web, nebo jste našli chybu? Napište mi vzkaz!
