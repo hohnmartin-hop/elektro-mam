@@ -234,7 +234,7 @@ export function Navbar() {
   const navLinks = [
     { to: '/projekty', label: 'Projekty', icon: Wrench },
     { to: '/recepty', label: 'Recepty', icon: BookOpen },
-    { to: '/kniha-prani-a-stiznosti', label: 'Kniha přání a stížností', icon: MessageSquareHeart },
+    { to: '/kniha-prani', label: 'Kniha přání a stížností', icon: MessageSquareHeart },
     { to: '/o-mne', label: 'O mně', icon: User },
     { to: '/kontakt', label: 'Kontakt', icon: Mail },
   ];
