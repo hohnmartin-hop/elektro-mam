@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Project, ProjectCategory, Component, ProjectStep } from '../../types';
-import { Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image, FileText, Eye } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, X, Check, FolderGit2, RefreshCw, Layers, Image, FileText, Eye } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';
 import { parseProjectDocx } from '../../utils/docxParser';
 
@@ -40,6 +40,17 @@ export const AdminProjects: React.FC = () => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isImportingDocx, setIsImportingDocx] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProjects = projects.filter(p => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (p.title && p.title.toLowerCase().includes(q)) ||
+      (p.description && p.description.toLowerCase().includes(q)) ||
+      (p.category && p.category.toLowerCase().includes(q))
+    );
+  });
 
   const initialFormState: Project = {
     slug: '',
@@ -257,6 +268,28 @@ export const AdminProjects: React.FC = () => {
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
+                    {!isEditing && (
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Hledat projekt..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-8 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-sky-500 transition w-48 sm:w-64"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 p-0.5"
+                  title="Vymazat hledání"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
           {!isEditing && (
             <button
               onClick={handleCreateNew}
@@ -686,7 +719,7 @@ export const AdminProjects: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {projects.map(project => (
+        {filteredProjects.map(project => (
           <div
             key={project.slug}
             className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col justify-between hover:border-neutral-700 transition space-y-4"

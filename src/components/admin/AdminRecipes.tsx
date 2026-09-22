@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Recipe, RecipeIngredient, RecipeStep } from '../../types';
-import { Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw, Image, FileText } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, X, Check, ChefHat, RefreshCw, Image, FileText } from 'lucide-react';
 import { ImageSelectorModal } from './ImageSelectorModal';
 import { parseRecipeDocx } from '../../utils/docxParser';
 
@@ -13,6 +13,18 @@ export const AdminRecipes: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isImportingDocx, setIsImportingDocx] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredRecipes = recipes.filter(r => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (r.title && r.title.toLowerCase().includes(q)) ||
+      (r.shortDescription && r.shortDescription.toLowerCase().includes(q)) ||
+      (r.description && r.description.toLowerCase().includes(q)) ||
+      (r.intro && r.intro.toLowerCase().includes(q))
+    );
+  });
 
   const initialFormState: Recipe = {
     slug: '',
@@ -498,14 +510,36 @@ export const AdminRecipes: React.FC = () => {
 
       {/* Seznam existujících receptů */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white">Všechny recepty ({recipes.length})</h3>
-          <button
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h3 className="text-lg font-bold text-white">Všechny recepty ({filteredRecipes.length}{filteredRecipes.length !== recipes.length ? ` z ${recipes.length}` : ''})</h3>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Hledat recept..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-8 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500 transition w-48 sm:w-60"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 p-0.5"
+                  title="Vymazat hledání"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <button
             onClick={fetchRecipes}
             className="text-xs text-neutral-400 hover:text-white flex items-center gap-1.5 transition-colors"
           >
             <RefreshCw size={14} /> Obnovit seznam
           </button>
+          </div>
         </div>
 
         {loading ? (
@@ -516,7 +550,7 @@ export const AdminRecipes: React.FC = () => {
           <p className="text-neutral-500 text-sm py-4">Žádné recepty v databázi.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recipes.map(recipe => (
+            {filteredRecipes.map(recipe => (
               <div
                 key={recipe.slug}
                 className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col justify-between"
