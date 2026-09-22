@@ -20,10 +20,86 @@ export const AdminPage: React.FC = () => {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'projects' | 'recipes' | 'guestbook'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'recipes' | 'guestbook' | 'comments'>('projects');
+  interface UnifiedComment {
+  id: number;
+  created_at: string;
+  name: string;
+  comment: string;
+  slug: string;
+  type: 'project' | 'recipe';
+  is_read: boolean;
+}
+
+  const [allComments, setAllComments] = useState<UnifiedComment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentFilter, setCommentFilter] = useState<'all' | 'unread'>('unread');
   const [replyingId, setReplyingId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+
+    const fetchAllComments = async () => {
+    setLoadingComments(true);
+    try {
+      const [projRes, recRes] = await Promise.all([
+        supabase.from('project_comments').select('*').order('created_at', { ascending: false }),
+        supabase.from('recipe_comments').select('*').order('created_at', { ascending: false })
+      ]);
+
+      const projComments: UnifiedComment[] = (projRes.data || []).map((c: any) => ({
+        id: c.id,
+        created_at: c.created_at,
+        name: c.name,
+        comment: c.comment,
+        slug: c.project_slug,
+        type: 'project' as const,
+        is_read: Boolean(c.is_read)
+      }));
+
+      const recComments: UnifiedComment[] = (recRes.data || []).map((c: any) => ({
+        id: c.id,
+        created_at: c.created_at,
+        name: c.name,
+        comment: c.comment,
+        slug: c.recipe_slug,
+        type: 'recipe' as const,
+        is_read: Boolean(c.is_read)
+      }));
+
+      const merged = [...projComments, ...recComments].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setAllComments(merged);
+    } catch (err: any) {
+      console.error('Chyba načítání komentářů:', err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleToggleRead = async (item: UnifiedComment) => {
+    const table = item.type === 'project' ? 'project_comments' : 'recipe_comments';
+    const nextStatus = !item.is_read;
+    try {
+      const { error } = await supabase.from(table).update({ is_read: nextStatus }).eq('id', item.id);
+      if (error) throw error;
+      setAllComments(prev => prev.map(c => c.id === item.id && c.type === item.type ? { ...c, is_read: nextStatus } : c));
+    } catch (err: any) {
+      alert('Nepodařilo se změnit stav: ' + err.message);
+    }
+  };
+
+  const handleDeleteComment = async (item: UnifiedComment) => {
+    if (!window.confirm('Opravdu chcete smazat tento komentář?')) return;
+    const table = item.type === 'project' ? 'project_comments' : 'recipe_comments';
+    try {
+      const { error } = await supabase.from(table).delete().eq('id', item.id);
+      if (error) throw error;
+      setAllComments(prev => prev.filter(c => !(c.id === item.id && c.type === item.type)));
+    } catch (err: any) {
+      alert('Nepodařilo se smazat komentář: ' + err.message);
+    }
+  };
 
   const handleStartReply = (entry: GuestbookEntry) => {
     setReplyingId(entry.id);
@@ -106,6 +182,7 @@ export const AdminPage: React.FC = () => {
       }
 
       fetchEntries();
+      fetchAllComments();
     };
 
     checkSession();
@@ -184,6 +261,21 @@ export const AdminPage: React.FC = () => {
             Recepty
           </button>
           <button
+            onClick={() => setActiveTab('comments')}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer flex items-center gap-2 ${
+              activeTab === 'comments'
+                ? 'bg-purple-500 text-neutral-950 font-bold'
+                : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+            }`}
+          >
+            Komentáře
+            {allComments.filter(c => !c.is_read).length > 0 && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-rose-500 text-white font-bold animate-pulse">
+                {allComments.filter(c => !c.is_read).length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('guestbook')}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
               activeTab === 'guestbook'
@@ -206,7 +298,137 @@ export const AdminPage: React.FC = () => {
         )}
 
         {/* Obsah záložky Kniha přání */}
-        {activeTab === 'guestbook' && (
+
+        {/* Správa komentářů v diskuzích */}
+        {activeTab === 'comments' && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCommentFilter('unread')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition ${
+                    commentFilter === 'unread'
+                      ? 'bg-purple-500 text-neutral-950 font-bold'
+                      : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Pouze nepřečtené ({allComments.filter(c => !c.is_read).length})
+                </button>
+                <button
+                  onClick={() => setCommentFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition ${
+                    commentFilter === 'all'
+                      ? 'bg-purple-500 text-neutral-950 font-bold'
+                      : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Všechny komentáře ({allComments.length})
+                </button>
+              </div>
+
+              <button
+                onClick={fetchAllComments}
+                disabled={loadingComments}
+                className="text-xs text-neutral-400 hover:text-white transition cursor-pointer"
+              >
+                {loadingComments ? 'Načítám...' : 'Obnovit seznam'}
+              </button>
+            </div>
+
+            {loadingComments ? (
+              <div className="p-12 text-center text-sm text-neutral-400">Načítám komentáře...</div>
+            ) : allComments.filter(c => commentFilter === 'all' || !c.is_read).length === 0 ? (
+              <div className="p-12 text-center rounded-2xl border border-neutral-800 bg-neutral-900/40 text-neutral-400">
+                {commentFilter === 'unread' ? 'Žádné nové nepřečtené komentáře.' : 'Zatím nebyly vloženy žádné komentáře.'}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {allComments
+                  .filter(c => commentFilter === 'all' || !c.is_read)
+                  .map(item => (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      className={`p-5 rounded-2xl border transition ${
+                        !item.is_read
+                          ? 'bg-neutral-900/90 border-purple-500/40 shadow-lg shadow-purple-500/5'
+                          : 'bg-neutral-900/40 border-neutral-800 text-neutral-400'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                            item.type === 'project' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                          }`}>
+                            {item.type === 'project' ? 'Projekt' : 'Recept'}
+                          </span>
+                          <span className="text-xs font-semibold text-neutral-300">
+                            Článek: <span className="text-white font-mono">{item.slug}</span>
+                          </span>
+                          {!item.is_read && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40">
+                              NOVÉ
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-xs text-neutral-500">
+                          {new Date(item.created_at).toLocaleDateString('cs-CZ', {
+                            day: 'numeric',
+                            month: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+
+                      <div className="mb-4">
+                        <span className="font-semibold text-sm text-neutral-200">{item.name}</span>
+                        <p className="mt-1 text-sm text-neutral-300 whitespace-pre-wrap bg-neutral-950/40 p-3 rounded-xl border border-neutral-800/80">
+                          {item.comment}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-neutral-800/80">
+                        <a
+                          href={`/${item.type === 'project' ? 'projekty' : 'recepty'}/${item.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold transition"
+                        >
+                          Přejít do diskuze / Odpovědět ↗
+                        </a>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleRead(item)}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                              item.is_read
+                                ? 'bg-neutral-800 text-neutral-400 hover:text-white'
+                                : 'bg-purple-600 hover:bg-purple-500 text-white'
+                            }`}
+                          >
+                            {item.is_read ? 'Označit jako nepřečtené' : 'Označit jako přečtené'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteComment(item)}
+                            className="px-3 py-1.5 rounded-lg bg-rose-950/30 hover:bg-rose-900/50 text-rose-400 border border-rose-900/40 text-xs transition cursor-pointer"
+                          >
+                            Smazat
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+                {activeTab === 'guestbook' && (
           <div className="space-y-4">
             {errorMsg && (
               <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
