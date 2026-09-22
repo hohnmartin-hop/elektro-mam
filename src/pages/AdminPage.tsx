@@ -10,6 +10,8 @@ interface GuestbookEntry {
   name: string;
   message: string;
   type: string;
+  reply?: string | null;
+  replied_at?: string | null;
 }
 
 export const AdminPage: React.FC = () => {
@@ -19,6 +21,53 @@ export const AdminPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [activeTab, setActiveTab] = useState<'projects' | 'recipes' | 'guestbook'>('projects');
+  const [replyingId, setReplyingId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+
+  const handleStartReply = (entry: GuestbookEntry) => {
+    setReplyingId(entry.id);
+    setReplyText(entry.reply || "");
+  };
+
+  const handleCancelReply = () => {
+    setReplyingId(null);
+    setReplyText("");
+  };
+
+  const handleSaveReply = async (id: number) => {
+    setIsSubmittingReply(true);
+    try {
+      const { error } = await supabase
+        .from("guestbook")
+        .update({
+          reply: replyText.trim() ? replyText.trim() : null,
+          replied_at: replyText.trim() ? new Date().toISOString() : null,
+        })
+        .eq("id", id);
+
+      if (error) {
+        alert("Chyba při ukládání odpovědi: " + error.message);
+      } else {
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.id === id
+              ? {
+                  ...e,
+                  reply: replyText.trim() ? replyText.trim() : null,
+                  replied_at: replyText.trim() ? new Date().toISOString() : null,
+                }
+              : e
+          )
+        );
+        handleCancelReply();
+      }
+    } catch {
+      alert("Nepodařilo se uložit odpověď.");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
 
   const fetchEntries = async () => {
     setLoading(true);
@@ -176,33 +225,100 @@ export const AdminPage: React.FC = () => {
                 {entries.map(entry => (
                   <div
                     key={entry.id}
-                    className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col sm:flex-row sm:items-start justify-between gap-4"
+                    className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col gap-4"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">{entry.name}</span>
-                        <span className="text-xs text-neutral-500">
-                          {new Date(entry.created_at).toLocaleDateString('cs-CZ', {
-                            day: 'numeric',
-                            month: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-400">
-                          {entry.type}
-                        </span>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-sm">{entry.name}</span>
+                          <span className="text-xs text-neutral-500">
+                            {new Date(entry.created_at).toLocaleDateString('cs-CZ', {
+                              day: 'numeric',
+                              month: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-400">
+                            {entry.type}
+                          </span>
+                        </div>
+                        <p className="text-neutral-300 text-sm whitespace-pre-wrap">{entry.message}</p>
                       </div>
-                      <p className="text-neutral-300 text-sm whitespace-pre-wrap">{entry.message}</p>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartReply(entry)}
+                          className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                        >
+                          {entry.reply ? "Upravit odpověď" : "Odpovědět"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(entry.id)}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                        >
+                          Smazat
+                        </button>
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => handleDelete(entry.id)}
-                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0"
-                    >
-                      Smazat
-                    </button>
+                    {/* Formulář pro odpověď */}
+                    {replyingId === entry.id && (
+                      <div className="pt-3 border-t border-neutral-800 space-y-3">
+                        <label className="block text-xs font-semibold text-neutral-400">
+                          Odpověď administrátora na tento vzkaz:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Napiš odpověď..."
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-amber-500/50"
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={isSubmittingReply}
+                            onClick={() => handleSaveReply(entry.id)}
+                            className="px-3.5 py-1.5 rounded-lg bg-amber-500 text-neutral-950 font-semibold hover:bg-amber-400 transition text-xs disabled:opacity-50"
+                          >
+                            {isSubmittingReply ? "Ukládám..." : "Uložit odpověď"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSubmittingReply}
+                            onClick={handleCancelReply}
+                            className="px-3.5 py-1.5 rounded-lg bg-neutral-800 text-neutral-300 hover:text-white transition text-xs"
+                          >
+                            Zrušit
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Zobrazení existující odpovědi, pokud se zrovna needituje */}
+                    {entry.reply && replyingId !== entry.id && (
+                      <div className="pt-3 border-t border-neutral-800/80 bg-neutral-950/40 -mx-5 -mb-5 p-4 rounded-b-2xl border-l-2 border-l-amber-500/80">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold text-amber-400">Reakce administrátora</span>
+                          {entry.replied_at && (
+                            <span className="text-[11px] text-neutral-500">
+                              {new Date(entry.replied_at).toLocaleDateString('cs-CZ', {
+                                day: 'numeric',
+                                month: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-neutral-300 whitespace-pre-wrap">{entry.reply}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

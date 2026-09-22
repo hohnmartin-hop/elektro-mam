@@ -19,6 +19,8 @@ interface GuestbookEntry {
   name: string;
   message: string;
   type: EntryType;
+  reply?: string | null;
+  replied_at?: string | null;
 }
 
 const MIN_SUBMIT_TIME_MS = 3000; // Minimální čas 3 sekundy od načtení formuláře
@@ -365,6 +367,24 @@ export function Guestbook() {
                 <p className="text-sm text-neutral-300 whitespace-pre-wrap leading-relaxed">
                   {entry.message}
                 </p>
+
+                {entry.reply && (
+                  <div className="mt-3 rounded-lg border-l-2 border-amber-500 bg-neutral-900/80 p-3.5 pl-4">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-xs font-semibold text-amber-400">
+                        Odpověď administrátora
+                      </span>
+                      {entry.replied_at && (
+                        <span className="text-[11px] text-neutral-500">
+                          {formatDate(entry.replied_at)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-neutral-200 whitespace-pre-wrap leading-relaxed">
+                      {entry.reply}
+                    </p>
+                  </div>
+                )}
               </div>
             ))
           )}
