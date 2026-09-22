@@ -106,6 +106,12 @@ export const AdminRecipes: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleCreateNew = () => {
+    setFormData(initialFormState);
+    setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleCancel = () => {
     setFormData(initialFormState);
     setIsEditing(false);
@@ -199,6 +205,7 @@ export const AdminRecipes: React.FC = () => {
   return (
     <div className="space-y-12">
       {/* Formulář */}
+      {isEditing && (
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-800">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -507,6 +514,7 @@ export const AdminRecipes: React.FC = () => {
           </div>
         </form>
       </div>
+      )}
 
       {/* Seznam existujících receptů */}
       <div className="space-y-4">
@@ -539,6 +547,16 @@ export const AdminRecipes: React.FC = () => {
           >
             <RefreshCw size={14} /> Obnovit seznam
           </button>
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={handleCreateNew}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-500 text-neutral-950 font-semibold hover:bg-amber-400 transition text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Přidat recept
+              </button>
+            )}
           </div>
         </div>
 
